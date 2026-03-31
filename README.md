@@ -3,6 +3,8 @@ Hanyang University ERICA - Capstone Project
 
 An autonomous tool-providing assistant built on the SO-101 arm (LeRobot / Hugging Face). The robot recognizes workspace context and provides tools or resource boxes to assist with assembly and maintenance tasks.
 
+***BELOW IS PLAN FOR SYSTEM - NOTHING IN README OR PROJECT IS FINAL AND IS SUBJECT TO CHANGE***
+
 ## Overview
 
 The system operates as a state machine with two main phases: **Warm Up** (environment verification) and **Active** (tool providing loop). It uses a fixed overhead camera (RealSense D435) for perception and the LeRobot framework for arm control.
