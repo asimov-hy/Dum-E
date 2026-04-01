@@ -1,0 +1,23 @@
+robot_name: so101
+serial:
+  port: /dev/ttyACM0
+  baudrate: 1000000
+motors:
+  - name: shoulder_pan
+    motor_id: 1
+    model: sts3215
+  - name: shoulder_lift
+    motor_id: 2
+    model: sts3215
+  - name: elbow
+    motor_id: 3
+    model: sts3215
+  - name: wrist_pitch
+    motor_id: 4
+    model: sts3215
+  - name: wrist_roll
+    motor_id: 5
+    model: sts3215
+  - name: gripper
+    motor_id: 6
+    model: sts3215

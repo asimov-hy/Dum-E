@@ -1,0 +1,32 @@
+home_pose: home
+joints:
+  - motor_name: shoulder_pan
+    offset_deg: 0.0
+    inverted: false
+    min_deg: null
+    max_deg: null
+  - motor_name: shoulder_lift
+    offset_deg: 0.0
+    inverted: false
+    min_deg: null
+    max_deg: null
+  - motor_name: elbow
+    offset_deg: 0.0
+    inverted: false
+    min_deg: null
+    max_deg: null
+  - motor_name: wrist_pitch
+    offset_deg: 0.0
+    inverted: false
+    min_deg: null
+    max_deg: null
+  - motor_name: wrist_roll
+    offset_deg: 0.0
+    inverted: false
+    min_deg: null
+    max_deg: null
+  - motor_name: gripper
+    offset_deg: 0.0
+    inverted: false
+    min_deg: null
+    max_deg: null
