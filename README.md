@@ -5,6 +5,13 @@ An autonomous tool-providing assistant built on the SO-101 arm (LeRobot / Huggin
 
 ***BELOW IS PLAN FOR SYSTEM - NOTHING IN README OR PROJECT IS FINAL AND IS SUBJECT TO CHANGE***
 
+
+TODO:
+QOL systems
+- easy lerobot motor id setup, calibration setup
+- easier motion recorder and replayer
+- easier storage and lerobot interface
+
 ## Overview
 
 The system operates as a state machine with two main phases: **Warm Up** (environment verification) and **Active** (tool providing loop). It uses a fixed overhead camera (RealSense D435) for perception and the LeRobot framework for arm control.
