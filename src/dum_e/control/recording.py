@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from dume.config import MotionDefinition, MotionStep, load_motion_definition, save_motion_definition
-from dume.control.session import ControlSession
+from dum_e.config import MotionDefinition, MotionStep, load_motion_definition, save_motion_definition
+from dum_e.control.session import ControlSession
 
 ASSET_NAME_RE = re.compile(r"^[a-z0-9_]+$")
 

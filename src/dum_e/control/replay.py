@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dume.control.recording import PoseStore
-from dume.control.session import ControlSession
+from dum_e.control.recording import PoseStore
+from dum_e.control.session import ControlSession
 
 
 class ReplayService:

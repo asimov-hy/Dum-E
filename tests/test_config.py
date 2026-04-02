@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from dume.control.recording import PoseStore
-from dume.control.session import ControlSession
+from dum_e.control.recording import PoseStore
+from dum_e.control.session import ControlSession
 
 
 def test_session_bootstrap_creates_default_files(tmp_path: Path) -> None:

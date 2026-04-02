@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dume.config import CalibrationConfig, JointCalibration
-from dume.control.session import ControlSession
+from dum_e.config import CalibrationConfig, JointCalibration
+from dum_e.control.session import ControlSession
 
 
 class CalibrationService:

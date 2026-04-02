@@ -1,4 +1,4 @@
-from dume.main import build_parser, parse_joint_values
+from dum_e.main import build_parser, parse_joint_values
 
 
 def test_parser_accepts_motor_set_id() -> None:

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from dume.config import MotorConfig
-from dume.control.session import ControlSession
+from dum_e.config import MotorConfig
+from dum_e.control.session import ControlSession
 
 
 @dataclass

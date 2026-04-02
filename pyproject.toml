@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dume"
+name = "dum-e"
 version = "0.1.0"
 description = "Dum-E utility-first LeRobot arm toolkit foundation"
 readme = "README.md"
@@ -23,7 +23,7 @@ dev = [
 ]
 
 [project.scripts]
-dume = "dume.main:app"
+dum-e = "dum_e.main:app"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

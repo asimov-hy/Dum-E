@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from dume.config import (
+from dum_e.config import (
     CalibrationConfig,
     HardwareConfig,
     PoseLibrary,

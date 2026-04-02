@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from dume.control import (
+from dum_e.control import (
     CalibrationService,
     ControlSession,
     MotorsService,

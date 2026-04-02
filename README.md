@@ -16,19 +16,19 @@ This keeps the project grounded in repeatable low-level control before adding pe
 
 ## Utility Commands
 
-After installing in editable mode, the CLI entrypoint is `dume`.
+After installing in editable mode, the CLI entrypoint is `dum-e`.
 
 ```bash
 pip install -e .
-dume init
-dume status
-dume motors scan
-dume motors set-id --name shoulder_pan --to-id 7
-dume calibrate show
-dume poses save home --joints 0,0,0,0,0,0
-dume motions scaffold pickup_demo --poses home,rack_approach,dock_approach
-dume replay pose home
-dume replay motion pickup_demo
+dum-e init
+dum-e status
+dum-e motors scan
+dum-e motors set-id --name shoulder_pan --to-id 7
+dum-e calibrate show
+dum-e poses save home --joints 0,0,0,0,0,0
+dum-e motions scaffold pickup_demo --poses home,rack_approach,dock_approach
+dum-e replay pose home
+dum-e replay motion pickup_demo
 ```
 
 The current framework is intentionally hardware-light. It manages structure, naming, and storage first, so LeRobot-specific motor and teleop implementations can be plugged in without rewriting the project layout again.
@@ -43,7 +43,7 @@ data/
   poses.json          # named joint-space poses
   motions/            # one JSON file per motion skeleton or recording
 logs/                 # reserved for future runtime logs
-src/dume/control/
+src/dum_e/control/
   motors.py
   calibration.py
   teleop.py
