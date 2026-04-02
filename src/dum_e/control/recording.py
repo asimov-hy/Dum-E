@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 from dum_e.config import MotionDefinition, MotionStep, load_motion_definition, save_motion_definition
+from dum_e.control.arm import ArmController
 from dum_e.control.session import ControlSession
 
 ASSET_NAME_RE = re.compile(r"^[a-z0-9_]+$")
@@ -25,6 +26,12 @@ class PoseStore:
         validated_name = validate_asset_name(name)
         self.session.poses.poses[validated_name] = joints
         self.session.save_poses()
+
+    def capture_pose(self, name: str, arm: ArmController) -> list[float]:
+        """Read current joint positions from hardware and save as a named pose."""
+        joints = arm.read_joints()
+        self.save_pose(name, joints)
+        return joints
 
     def list_poses(self) -> dict[str, list[float]]:
         return dict(sorted(self.session.poses.poses.items()))

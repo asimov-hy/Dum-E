@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from dum_e.config import (
@@ -18,6 +18,8 @@ from dum_e.config import (
     save_hardware_config,
     save_pose_library,
 )
+from dum_e.control.arm import ArmController
+from dum_e.control.bus import FeetechBus, MotorBus
 
 
 @dataclass
@@ -26,6 +28,7 @@ class ControlSession:
     hardware: HardwareConfig
     calibration: CalibrationConfig
     poses: PoseLibrary
+    arm: ArmController | None = field(default=None, repr=False)
 
     @classmethod
     def load(cls, root: Path) -> "ControlSession":
@@ -51,6 +54,37 @@ class ControlSession:
             save_pose_library(paths.poses_file, poses)
 
         return cls(paths=paths, hardware=hardware, calibration=calibration, poses=poses)
+
+    # -- arm lifecycle ---------------------------------------------------------
+
+    def connect_arm(self, bus: MotorBus | None = None) -> ArmController:
+        """Connect to hardware. Uses FeetechBus by default, or accepts a mock."""
+        if bus is None:
+            bus = FeetechBus(
+                port=self.hardware.serial.port,
+                baudrate=self.hardware.serial.baudrate,
+            )
+        arm = ArmController(
+            bus=bus,
+            motors=list(self.hardware.motors),
+            calibration=self.calibration,
+        )
+        arm.connect()
+        self.arm = arm
+        return arm
+
+    def disconnect_arm(self) -> None:
+        if self.arm is not None:
+            self.arm.disconnect()
+            self.arm = None
+
+    def require_arm(self) -> ArmController:
+        """Return the connected arm or raise."""
+        if self.arm is None or not self.arm.is_connected:
+            raise RuntimeError("No arm connected — call connect_arm() first")
+        return self.arm
+
+    # -- persistence -----------------------------------------------------------
 
     def bootstrap(self) -> None:
         self.paths.ensure_directories()
