@@ -45,6 +45,36 @@ class PoseLibrary(BaseModel):
     poses: dict[str, list[float]] = Field(default_factory=dict)
 
 
+class BinPosition(BaseModel):
+    index: int
+    x: float
+    y: float
+    z: float
+    label: str = ""
+
+
+class LoadoutArea(BaseModel):
+    capacity: int = 2
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
+
+
+class ActorZone(BaseModel):
+    x_min: float = 0.0
+    x_max: float = 1.0
+    y_min: float = 0.0
+    y_max: float = 1.0
+
+
+class WorkspaceConfig(BaseModel):
+    camera_serial: str = ""
+    bin_positions: list[BinPosition] = Field(default_factory=list)
+    loadout_area: LoadoutArea = Field(default_factory=LoadoutArea)
+    actor_zone: ActorZone = Field(default_factory=ActorZone)
+    safety_margin_m: float = 0.05
+
+
 class MotionStep(BaseModel):
     pose: str | None = None
     joints: list[float] | None = None
@@ -78,6 +108,7 @@ class ProjectPaths:
     logs_dir: Path
     hardware_config: Path
     calibration_config: Path
+    workspace_config: Path
     poses_file: Path
 
     @classmethod
@@ -95,6 +126,7 @@ class ProjectPaths:
             logs_dir=logs_dir,
             hardware_config=config_dir / "hardware.yaml",
             calibration_config=config_dir / "calibration.yaml",
+            workspace_config=config_dir / "workspace.yaml",
             poses_file=data_dir / "poses.json",
         )
 
@@ -127,6 +159,19 @@ def default_calibration_config(hardware: HardwareConfig | None = None) -> Calibr
 
 def default_pose_library(joint_count: int = 6) -> PoseLibrary:
     return PoseLibrary(poses={"home": [0.0] * joint_count})
+
+
+def default_workspace_config() -> WorkspaceConfig:
+    return WorkspaceConfig(
+        bin_positions=[
+            BinPosition(index=0, x=0.25, y=-0.20, z=0.0),
+            BinPosition(index=1, x=0.25, y=0.0, z=0.0),
+            BinPosition(index=2, x=0.25, y=0.20, z=0.0),
+        ],
+        loadout_area=LoadoutArea(capacity=2, x=0.0, y=0.30, z=0.0),
+        actor_zone=ActorZone(x_min=-0.50, x_max=0.50, y_min=0.50, y_max=1.50),
+        safety_margin_m=0.05,
+    )
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -171,6 +216,14 @@ def load_calibration_config(path: Path) -> CalibrationConfig:
 
 
 def save_calibration_config(path: Path, config: CalibrationConfig) -> None:
+    save_yaml(path, config)
+
+
+def load_workspace_config(path: Path) -> WorkspaceConfig:
+    return WorkspaceConfig.model_validate(load_yaml(path))
+
+
+def save_workspace_config(path: Path, config: WorkspaceConfig) -> None:
     save_yaml(path, config)
 
 

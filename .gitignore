@@ -20,7 +20,8 @@ dist/
 *.egg-info/
 
 # Local runtime artifacts
-logs/
+logs/*
+!logs/.gitkeep
 *.log
 
 # Editor and OS

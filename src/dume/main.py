@@ -9,7 +9,7 @@ from dume.control import (
     MotorsService,
     PoseStore,
     ReplayService,
-    TeleopService,
+    teleop_status_description,
 )
 
 
@@ -102,6 +102,8 @@ def app() -> None:
         print(f"Serial: {summary['port']} @ {summary['baudrate']}")
         print(f"Configured motors: {summary['motor_count']}")
         print(f"Calibration joints: {summary['calibration_joint_count']}")
+        print(f"Workspace bins: {summary['bin_position_count']}")
+        print(f"Loadout capacity: {summary['loadout_capacity']}")
         print(f"Saved poses: {summary['pose_count']}")
         print(f"Saved motions: {summary['motion_count']}")
         return
@@ -138,8 +140,7 @@ def app() -> None:
             return
 
     if args.command == "teleop":
-        teleop = TeleopService()
-        print(teleop.describe())
+        print(teleop_status_description())
         return
 
     if args.command == "poses":

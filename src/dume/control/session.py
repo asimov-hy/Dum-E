@@ -8,15 +8,19 @@ from dume.config import (
     HardwareConfig,
     PoseLibrary,
     ProjectPaths,
+    WorkspaceConfig,
     default_calibration_config,
     default_hardware_config,
     default_pose_library,
+    default_workspace_config,
     load_calibration_config,
     load_hardware_config,
     load_pose_library,
+    load_workspace_config,
     save_calibration_config,
     save_hardware_config,
     save_pose_library,
+    save_workspace_config,
 )
 
 
@@ -25,6 +29,7 @@ class ControlSession:
     paths: ProjectPaths
     hardware: HardwareConfig
     calibration: CalibrationConfig
+    workspace: WorkspaceConfig
     poses: PoseLibrary
 
     @classmethod
@@ -44,13 +49,25 @@ class ControlSession:
             calibration = default_calibration_config(hardware)
             save_calibration_config(paths.calibration_config, calibration)
 
+        if paths.workspace_config.exists():
+            workspace = load_workspace_config(paths.workspace_config)
+        else:
+            workspace = default_workspace_config()
+            save_workspace_config(paths.workspace_config, workspace)
+
         if paths.poses_file.exists():
             poses = load_pose_library(paths.poses_file)
         else:
             poses = default_pose_library(len(hardware.motors))
             save_pose_library(paths.poses_file, poses)
 
-        return cls(paths=paths, hardware=hardware, calibration=calibration, poses=poses)
+        return cls(
+            paths=paths,
+            hardware=hardware,
+            calibration=calibration,
+            workspace=workspace,
+            poses=poses,
+        )
 
     def bootstrap(self) -> None:
         self.paths.ensure_directories()
@@ -59,6 +76,7 @@ class ControlSession:
     def save_all(self) -> None:
         save_hardware_config(self.paths.hardware_config, self.hardware)
         save_calibration_config(self.paths.calibration_config, self.calibration)
+        save_workspace_config(self.paths.workspace_config, self.workspace)
         save_pose_library(self.paths.poses_file, self.poses)
 
     def save_hardware(self) -> None:
@@ -66,6 +84,9 @@ class ControlSession:
 
     def save_calibration(self) -> None:
         save_calibration_config(self.paths.calibration_config, self.calibration)
+
+    def save_workspace(self) -> None:
+        save_workspace_config(self.paths.workspace_config, self.workspace)
 
     def save_poses(self) -> None:
         save_pose_library(self.paths.poses_file, self.poses)
@@ -78,6 +99,8 @@ class ControlSession:
             "baudrate": self.hardware.serial.baudrate,
             "motor_count": len(self.hardware.motors),
             "calibration_joint_count": len(self.calibration.joints),
+            "bin_position_count": len(self.workspace.bin_positions),
+            "loadout_capacity": self.workspace.loadout_area.capacity,
             "pose_count": len(self.poses.poses),
             "motion_count": motion_count,
         }

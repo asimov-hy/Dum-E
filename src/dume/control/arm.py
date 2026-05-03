@@ -1,20 +1,65 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from abc import ABC, abstractmethod
+
+from dume.control.exceptions import ArmCommandError, ArmConnectionError
 
 
-@dataclass
-class ArmController:
-    """Small interface placeholder for future LeRobot integration."""
+class ArmDriver(ABC):
+    """Interface for robot arm drivers.
 
-    connected: bool = False
-    last_joint_command: list[float] = field(default_factory=list)
+    Real hardware drivers, simulators, and tests should satisfy this contract so
+    replay and autonomy code do not depend on one transport implementation.
+    """
+
+    @abstractmethod
+    def connect(self) -> None:
+        """Open the driver connection."""
+
+    @abstractmethod
+    def disconnect(self) -> None:
+        """Close the driver connection."""
+
+    @abstractmethod
+    def move_joints(self, joints: list[float], speed: float = 0.5) -> bool:
+        """Move to joint targets and return whether the command completed."""
+
+    @abstractmethod
+    def read_joints(self) -> list[float]:
+        """Return the latest known joint positions."""
+
+    @abstractmethod
+    def is_connected(self) -> bool:
+        """Return whether the driver is connected."""
+
+
+class MockArmDriver(ArmDriver):
+    """In-memory arm driver for tests and hardware-free development."""
+
+    def __init__(self) -> None:
+        self._connected = False
+        self._joints: list[float] = []
+        self.last_speed = 0.5
 
     def connect(self) -> None:
-        self.connected = True
+        self._connected = True
 
-    def move_joints(self, joints: list[float]) -> None:
-        self.last_joint_command = joints
+    def disconnect(self) -> None:
+        self._connected = False
+
+    def move_joints(self, joints: list[float], speed: float = 0.5) -> bool:
+        if not self._connected:
+            raise ArmConnectionError("Arm driver is not connected")
+        if not joints:
+            raise ArmCommandError("Joint target must include at least one value")
+        self._joints = list(joints)
+        self.last_speed = speed
+        return True
 
     def read_joints(self) -> list[float]:
-        return list(self.last_joint_command)
+        if not self._connected:
+            raise ArmConnectionError("Arm driver is not connected")
+        return list(self._joints)
+
+    def is_connected(self) -> bool:
+        return self._connected

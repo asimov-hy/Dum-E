@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dume.control.arm import ArmDriver
 from dume.control.recording import PoseStore
 from dume.control.session import ControlSession
 
@@ -25,3 +26,21 @@ class ReplayService:
             )
         joined_steps = "; ".join(step_descriptions)
         return f"Replay plan for motion '{name}': {joined_steps}"
+
+    def execute_pose(self, name: str, driver: ArmDriver) -> bool:
+        """Execute a saved pose through an injected arm driver."""
+
+        joints = self.pose_store.load_pose(name)
+        return driver.move_joints(joints)
+
+    def execute_motion(self, name: str, driver: ArmDriver) -> bool:
+        """Execute a saved motion through an injected arm driver."""
+
+        motion = self.pose_store.load_motion(name)
+        for step in motion.steps:
+            joints = self.pose_store.load_pose(step.pose) if step.pose is not None else step.joints
+            if joints is None:
+                raise ValueError("Motion step did not define a target")
+            if not driver.move_joints(joints):
+                return False
+        return True

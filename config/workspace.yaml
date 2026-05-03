@@ -1,0 +1,28 @@
+camera_serial: ''
+bin_positions:
+- index: 0
+  x: 0.25
+  y: -0.2
+  z: 0.0
+  label: ''
+- index: 1
+  x: 0.25
+  y: 0.0
+  z: 0.0
+  label: ''
+- index: 2
+  x: 0.25
+  y: 0.2
+  z: 0.0
+  label: ''
+loadout_area:
+  capacity: 2
+  x: 0.0
+  y: 0.3
+  z: 0.0
+actor_zone:
+  x_min: -0.5
+  x_max: 0.5
+  y_min: 0.5
+  y_max: 1.5
+safety_margin_m: 0.05
