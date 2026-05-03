@@ -3,14 +3,14 @@ from pathlib import Path
 import pytest
 
 from dume.control import (
-    ArmCommandError,
-    ArmConnectionError,
-    ArmDriverError,
+    CalibrationError,
+    ConnectionError,
     ControlSession,
-    DumeControlError,
+    HardwareError,
+    JointLimitError,
     MockArmDriver,
     MockTeleopDriver,
-    MotionExecutionError,
+    MotorStallError,
     PoseStore,
     ReplayService,
 )
@@ -37,15 +37,16 @@ def test_mock_arm_driver_connection_and_joint_readback() -> None:
 def test_mock_arm_driver_requires_connection() -> None:
     driver = MockArmDriver()
 
-    with pytest.raises(ArmConnectionError):
+    with pytest.raises(ConnectionError):
         driver.move_joints([0.0])
 
 
 def test_control_exceptions_are_typed_and_exported() -> None:
-    assert issubclass(ArmDriverError, DumeControlError)
-    assert issubclass(ArmConnectionError, ArmDriverError)
-    assert issubclass(ArmCommandError, ArmDriverError)
-    assert issubclass(MotionExecutionError, DumeControlError)
+    assert issubclass(ConnectionError, HardwareError)
+    assert issubclass(MotorStallError, HardwareError)
+    assert issubclass(JointLimitError, HardwareError)
+    assert issubclass(CalibrationError, HardwareError)
+    assert str(ConnectionError("offline")) == "offline"
 
 
 def test_mock_teleop_driver_start_stop_state() -> None:

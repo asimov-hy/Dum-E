@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from dume.control.exceptions import ArmCommandError, ArmConnectionError
+from dume.control.exceptions import ConnectionError, JointLimitError
 
 
 class ArmDriver(ABC):
@@ -49,16 +49,16 @@ class MockArmDriver(ArmDriver):
 
     def move_joints(self, joints: list[float], speed: float = 0.5) -> bool:
         if not self._connected:
-            raise ArmConnectionError("Arm driver is not connected")
+            raise ConnectionError("Arm driver is not connected")
         if not joints:
-            raise ArmCommandError("Joint target must include at least one value")
+            raise JointLimitError("Joint target must include at least one value")
         self._joints = list(joints)
         self.last_speed = speed
         return True
 
     def read_joints(self) -> list[float]:
         if not self._connected:
-            raise ArmConnectionError("Arm driver is not connected")
+            raise ConnectionError("Arm driver is not connected")
         return list(self._joints)
 
     def is_connected(self) -> bool:

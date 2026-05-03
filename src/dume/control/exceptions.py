@@ -1,21 +1,21 @@
 from __future__ import annotations
 
 
-class DumeControlError(Exception):
-    """Base exception for control-layer failures."""
+class HardwareError(Exception):
+    """Base exception for hardware-control failures."""
 
 
-class ArmDriverError(DumeControlError):
-    """Base exception for arm driver failures."""
+class ConnectionError(HardwareError):
+    """Raised when hardware access requires a missing connection."""
 
 
-class ArmConnectionError(ArmDriverError):
-    """Raised when an arm command requires a missing connection."""
+class MotorStallError(HardwareError):
+    """Raised when a motor reports or simulates a stall."""
 
 
-class ArmCommandError(ArmDriverError):
-    """Raised when an arm command is invalid or rejected."""
+class JointLimitError(HardwareError):
+    """Raised when a joint target is invalid or outside allowed limits."""
 
 
-class MotionExecutionError(DumeControlError):
-    """Raised when a saved motion cannot complete."""
+class CalibrationError(HardwareError):
+    """Raised when calibration data or calibration execution fails."""

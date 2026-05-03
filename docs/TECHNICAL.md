@@ -104,18 +104,18 @@ read_joints() -> list[float]
 is_connected() -> bool
 ```
 
-`MockArmDriver.move_joints()` and `read_joints()` raise `ArmConnectionError`
-when called before `connect()`. `move_joints()` raises `ArmCommandError` for an
+`MockArmDriver.move_joints()` and `read_joints()` raise `ConnectionError`
+when called before `connect()`. `move_joints()` raises `JointLimitError` for an
 empty joint target.
 
 Control exceptions:
 
 ```python
-DumeControlError
-ArmDriverError
-ArmConnectionError
-ArmCommandError
-MotionExecutionError
+HardwareError
+ConnectionError
+MotorStallError
+JointLimitError
+CalibrationError
 ```
 
 `TeleopDriver`:

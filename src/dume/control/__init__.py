@@ -3,11 +3,11 @@
 from dume.control.arm import ArmDriver, MockArmDriver
 from dume.control.calibration import CalibrationService
 from dume.control.exceptions import (
-    ArmCommandError,
-    ArmConnectionError,
-    ArmDriverError,
-    DumeControlError,
-    MotionExecutionError,
+    CalibrationError,
+    ConnectionError,
+    HardwareError,
+    JointLimitError,
+    MotorStallError,
 )
 from dume.control.motors import MotorsService
 from dume.control.recording import PoseStore
@@ -17,15 +17,15 @@ from dume.control.teleop import MockTeleopDriver, TeleopDriver, teleop_status_de
 
 __all__ = [
     "ArmDriver",
-    "ArmCommandError",
-    "ArmConnectionError",
-    "ArmDriverError",
+    "CalibrationError",
+    "ConnectionError",
     "CalibrationService",
     "ControlSession",
-    "DumeControlError",
+    "HardwareError",
+    "JointLimitError",
     "MockArmDriver",
     "MockTeleopDriver",
-    "MotionExecutionError",
+    "MotorStallError",
     "MotorsService",
     "PoseStore",
     "ReplayService",
