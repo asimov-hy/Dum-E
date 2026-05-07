@@ -15,6 +15,11 @@ Implemented package:
   motor ID metadata, pose storage, motion storage, replay planning, and mockable
   arm/teleop interfaces.
 - `src/dume/logging.py`: project logger helpers and file logging setup.
+- `core/`, `camera/`, and `perception/`: DUM-E MediaPipeline contracts, camera
+  frame sources, MediaPipe gesture recognition, geometry mapping, temporal
+  filters, and a mock operator-presence boundary.
+- `demos/gesture_demo.py`: final gesture demo for webcam, RealSense when
+  installed, fake sources, and `video:<path>` recorded media.
 
 Current CLI commands:
 
@@ -37,37 +42,157 @@ dume --project-root . replay motion inspection_cycle
 Documentation rule: no command, package, or feature may appear as current in this
 README unless it exists in the repository. Planned work belongs in the roadmap.
 
-## Install And Development
+## Setup
 
-Python requirement: Python >= 3.10.
-
-Use `pyproject.toml` as the single dependency source.
-
-With `venv`:
+Conda is the intended runtime environment for running the full DUM-E program.
+`pyproject.toml` remains the Python package and dependency metadata source.
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -e ".[dev]"
-```
-
-With conda:
-
-```bash
-conda create -n dume python=3.10
+conda env create -f environment.yml
 conda activate dume
-pip install -e ".[dev]"
+python -m pip install -e ".[dev,camera,perception]"
 ```
 
 Run checks:
 
 ```bash
-pytest -q
-ruff check src tests
+python -m pytest -q
 ```
+
+For full developer, agent, optional dependency, architecture, and validation
+details, see `docs/TECHNICAL.md`.
+
+`.venv/` may be used locally for editor, test, or agent execution, but it is not
+the canonical runtime environment.
 
 `requirements.txt` and `requirements-dev.txt` are intentionally not used. Add
 optional dependency groups only when the corresponding code needs them.
+
+Phase 0 and camera-only tests do not require MediaPipe. Webcam/video sources use
+OpenCV lazily. RealSense remains optional and is imported only when that backend
+starts.
+
+## MediaPipeline Setup
+
+Download or verify the MediaPipe gesture model:
+
+```bash
+python scripts/download_gesture_model.py
+```
+
+The default model path is `data/models/gesture_recognizer.task`. The model
+binary is a local/external artifact; the checksum
+`data/models/gesture_recognizer.task.sha256` should be tracked so
+`scripts/download_gesture_model.py` can recreate and verify the local model.
+Runtime code does not download models automatically. A missing model causes
+`GestureService` to raise with download instructions.
+
+Run the final live demo:
+
+```bash
+python demos/gesture_demo.py \
+  --source webcam \
+  --log-observations \
+  --log-events \
+  --draw-landmarks \
+  --draw-finger-state \
+  --draw-filter-state
+```
+
+Supported demo source forms:
+
+- `--source webcam`
+- `--source realsense` when `pyrealsense2` and hardware are available
+- `--source video:<path>` for recorded files
+- `--show-flipped-display true` for display-only mirroring
+
+The demo runs inference once per frame with:
+
+```text
+frame = source.get_frame()
+observations = gesture.analyze_frame(frame)
+events = gesture.events_from_observations(frame, observations)
+```
+
+Frames are not flipped before inference. RGB is converted to BGR only for
+display.
+
+## Recorded-Media Regression
+
+The regression manifest lives at `data/test_media/manifest.json`. Put clips at
+the listed paths under `data/test_media/`, or set `DUME_TEST_MEDIA_DIR` to an
+external media root with the same relative paths. Set a clip's `present` field
+to `true` once the file exists.
+
+Current Phase 5 status is **PARTIAL PASS**: the harness and manifest exist, but
+the required recorded clips are missing. See:
+
+- `docs/mediapipeline_current_state.md`
+- `docs/mediapipeline_recording_plan.md`
+
+Run:
+
+```bash
+python -m pytest -q tests/test_regression_media.py
+```
+
+Check media status:
+
+```bash
+python scripts/check_regression_media.py
+python scripts/check_regression_media.py --strict
+```
+
+Strict mode is expected to fail until required primary clips are recorded.
+
+Record future clips:
+
+```bash
+python scripts/record_regression_clip.py \
+  --source webcam \
+  --output data/test_media/webcam/thumbs_up_clear.mp4 \
+  --clip-id webcam_thumbs_up_clear \
+  --expected THUMBS_UP \
+  --suite webcam \
+  --camera-backend webcam \
+  --duration-seconds 5
+```
+
+Camera-specific suites:
+
+- `primary`: required clips for Phase 5 full PASS.
+- `webcam`: optional compatibility clips.
+- `realsense_rgb`: optional RealSense RGB compatibility clips. Keep these
+  separate because RealSense behavior may differ from webcam behavior.
+
+Optional report output:
+
+```bash
+DUME_REGRESSION_REPORT=/tmp/dume_regression_report.json \
+python -m pytest -q tests/test_regression_media.py
+```
+
+The regression report separates six-target accuracy from `NONE` rejection
+behavior. It records observed events, first detection timestamp, misses, false
+positives, raw-label distribution, source distribution, latency, and
+time-to-event. Phase 5 is not a full PASS until recorded clips are present and
+the regression test runs against them rather than skipping missing media.
+
+Required regression coverage includes clear target clips for `THUMBS_UP`,
+`FIST`, `PALM`, `ONE_FINGER`, `TWO_FINGERS`, and `THREE_FINGERS`, plus
+unsupported/no-hand clips for `NONE` rejection and stress clips for lighting,
+motion blur, two hands, side angles, ring-finger oscillation, and raw-label
+flicker.
+
+Known MediaPipeline limitations:
+
+- Ring-finger geometry can oscillate, especially for three-finger poses.
+- Thumb detection is intentionally strict and handedness-dependent.
+- Hand tilt can break simple image-space finger geometry.
+- `max_num_hands=1` is the prototype default.
+- Display mirroring is display-only and must not be applied before inference.
+- Manual webcam validation for Phase 3 and Phase 4 remains outstanding unless
+  recorded in the phase checklist.
 
 ## Architecture
 
@@ -75,13 +200,19 @@ Current dependency direction:
 
 ```text
 control/ owns hardware-adjacent utilities and shared interfaces today
-planned autonomy/ will coordinate control/, camera/, and manual/
+core/ owns MediaPipeline contracts
+camera/ may import core/
+perception/ may import core/
+camera/ and perception/ do not import each other
+planned autonomy/ will coordinate control/, camera/perception outputs, and manual/
 ```
 
 Rules:
 
-- Planned `control/`, `camera/`, and `manual/` layers should not import from
-  each other.
+- `core/`, `camera/`, and `perception/` stay separated by the MediaPipeline
+  contracts.
+- Planned `control/` and `manual/` layers should not import from camera or
+  perception directly.
 - Planned `autonomy/` coordinates data flow between layers.
 - New hardware, perception, manual, RAG, or model behavior should start behind a
   small interface plus a mock implementation.
@@ -99,7 +230,14 @@ data/
   poses.json
   motions/
   manuals/
+  models/
+  test_media/
 logs/
+core/
+camera/
+perception/
+demos/
+scripts/
 src/dume/
   main.py
   config.py
@@ -113,17 +251,19 @@ docs/
 
 Near-term:
 
-- Create mock-first camera, manual, and autonomy packages one package at a time.
-- Add `src/dume/camera/`, `src/dume/manual/`, and `src/dume/autonomy/` only when
-  their first scoped interfaces/tests are part of the same change.
-- Add optional extras only when needed, such as `camera`, `manual`, and `gesture`.
+- Record the MediaPipeline regression clips declared in `data/test_media/manifest.json`.
+- Complete manual webcam validation for Phase 3 and Phase 4 gestures/filters.
+- Add manual and autonomy packages only when their first scoped interfaces/tests
+  are part of the same change.
+- Add new optional extras only when corresponding code needs them.
 - Keep all hardware-facing code testable without the robot attached.
 
 Later possibilities:
 
-- RealSense D435 frame capture and workspace perception.
+- RealSense D435 validation and workspace perception.
 - Manual image parsing for LEGO brick color sequence extraction.
-- Gesture input through MediaPipe Hands.
+- Integration of MediaPipeline gesture events into a future command flow after
+  acceptance criteria are met.
 - Real SO-101/LeRobot arm driver.
 - RAG or model-provider support after the interface and dependency needs are
   known. Do not add `rag` or `ai` extras before real code exists.

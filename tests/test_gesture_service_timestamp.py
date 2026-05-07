@@ -13,7 +13,7 @@ import perception.gesture as gesture_module
 from core.frame import Frame
 from core.landmarks import Landmark2D, Landmark3D
 from perception.gesture import GestureService, _MediaPipeRuntime
-from perception.types import GestureServiceConfig, GestureSource, GestureType
+from perception.types import FilterConfig, GestureServiceConfig, GestureSource, GestureType
 
 
 class FakeImage:
@@ -131,7 +131,7 @@ def test_build_observations_preserves_phase2_metadata(
     assert len(observations) == 1
     observation = observations[0]
     assert observation.type is GestureType.FIST
-    assert observation.source is GestureSource.CANNED
+    assert observation.source is GestureSource.HYBRID
     assert observation.raw_label == "Closed_Fist"
     assert observation.raw_label_confidence == 0.77
     assert observation.handedness == "Right"
@@ -141,9 +141,9 @@ def test_build_observations_preserves_phase2_metadata(
     assert observation.camera_name == "unit-test"
     assert isinstance(observation.landmarks[0], Landmark2D)
     assert isinstance(observation.world_landmarks[0], Landmark3D)
-    assert observation.finger_count is None
-    assert observation.finger_state is None
-    assert observation.finger_state_result is None
+    assert observation.finger_count == 0
+    assert observation.finger_state is not None
+    assert observation.finger_state_result is not None
 
 
 def test_missing_model_raises_clear_error(tmp_path: Path) -> None:
@@ -227,7 +227,12 @@ def _service(
             image_format="SRGB",
         ),
     )
-    return GestureService(GestureServiceConfig(model_path=str(_model_path(tmp_path))))
+    return GestureService(
+        GestureServiceConfig(
+            model_path=str(_model_path(tmp_path)),
+            filter_config=FilterConfig(stability_frames=1, cooldown_seconds=0.0),
+        )
+    )
 
 
 def _model_path(tmp_path: Path) -> Path:
@@ -259,17 +264,64 @@ def _result(
     raw_label: str = "Thumb_Up",
     raw_confidence: float = 0.9,
 ) -> object:
-    image_landmarks = [
-        SimpleNamespace(x=0.1, y=0.2, z=0.0),
-        SimpleNamespace(x=0.2, y=0.3, z=-0.1),
-    ]
+    image_landmarks = _image_landmarks_for_label(raw_label)
     world_landmarks = [
-        SimpleNamespace(x=0.01, y=0.02, z=0.03),
-        SimpleNamespace(x=0.04, y=0.05, z=0.06),
+        SimpleNamespace(x=float(index) / 100.0, y=float(index) / 100.0, z=0.0)
+        for index in range(21)
     ]
     return SimpleNamespace(
         hand_landmarks=[image_landmarks],
         hand_world_landmarks=[world_landmarks],
         gestures=[[SimpleNamespace(category_name=raw_label, score=raw_confidence)]],
         handedness=[[SimpleNamespace(category_name="Right", score=0.88)]],
+    )
+
+
+def _image_landmarks_for_label(raw_label: str | None) -> list[SimpleNamespace]:
+    fingers = {
+        "thumb": raw_label == "Thumb_Up",
+        "index": raw_label == "Open_Palm",
+        "middle": raw_label == "Open_Palm",
+        "ring": raw_label == "Open_Palm",
+        "pinky": raw_label == "Open_Palm",
+    }
+    return _image_landmarks(**fingers)
+
+
+def _image_landmarks(
+    *,
+    thumb: bool = False,
+    index: bool = False,
+    middle: bool = False,
+    ring: bool = False,
+    pinky: bool = False,
+) -> list[SimpleNamespace]:
+    landmarks = [SimpleNamespace(x=0.5, y=0.5, z=0.0) for _ in range(21)]
+    thumb_ip_x = 0.4
+    landmarks[3] = SimpleNamespace(x=thumb_ip_x, y=0.5, z=0.0)
+    landmarks[4] = SimpleNamespace(
+        x=thumb_ip_x + 0.1 if thumb else thumb_ip_x - 0.1,
+        y=0.5,
+        z=0.0,
+    )
+
+    _set_vertical_finger(landmarks, pip_index=6, tip_index=8, extended=index)
+    _set_vertical_finger(landmarks, pip_index=10, tip_index=12, extended=middle)
+    _set_vertical_finger(landmarks, pip_index=14, tip_index=16, extended=ring)
+    _set_vertical_finger(landmarks, pip_index=18, tip_index=20, extended=pinky)
+    return landmarks
+
+
+def _set_vertical_finger(
+    landmarks: list[SimpleNamespace],
+    *,
+    pip_index: int,
+    tip_index: int,
+    extended: bool,
+) -> None:
+    landmarks[pip_index] = SimpleNamespace(x=0.5, y=0.5, z=0.0)
+    landmarks[tip_index] = SimpleNamespace(
+        x=0.5,
+        y=0.4 if extended else 0.6,
+        z=0.0,
     )

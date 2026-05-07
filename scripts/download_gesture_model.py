@@ -1,11 +1,9 @@
-"""Download the MediaPipe gesture recognizer model for Phase 2.
+"""Download and verify the MediaPipe gesture recognizer model.
 
-Checksum behavior:
-- Pass ``--sha256 <hex>`` to require a specific SHA-256 digest.
-- If ``data/models/gesture_recognizer.task.sha256`` exists, its first token is
-  used as the expected digest.
-- Without either value, the script prints the downloaded SHA-256 but does not
-  claim cryptographic verification.
+The preferred Phase 5 path is to keep
+``data/models/gesture_recognizer.task.sha256`` under version control. When that
+checksum file exists, this script verifies both existing and newly downloaded
+model files against it and fails clearly on mismatch.
 """
 
 from __future__ import annotations
@@ -30,6 +28,25 @@ def main() -> int:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     expected_sha256 = args.sha256 or _read_checksum_file(output_path)
+    if output_path.is_file():
+        existing_sha256 = _sha256(output_path)
+        if expected_sha256 is not None and existing_sha256.lower() == expected_sha256.lower():
+            print(f"Existing model verified at {output_path}")
+            print(f"SHA-256: {existing_sha256}")
+            return 0
+        if expected_sha256 is None:
+            print(f"Existing model found at {output_path}")
+            print(f"SHA-256: {existing_sha256}")
+            print(
+                "No expected SHA-256 was provided, so the existing model was "
+                "not cryptographically verified."
+            )
+            return 0
+        print(
+            "Existing model checksum mismatch; redownloading. "
+            f"expected {expected_sha256}, got {existing_sha256}"
+        )
+
     with tempfile.NamedTemporaryFile(delete=False, dir=output_path.parent) as tmp:
         tmp_path = Path(tmp.name)
 

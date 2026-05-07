@@ -973,7 +973,9 @@ handedness, frame_id, timestamp_ms
 - Middle finger only → NONE.
 - Four fingers (no thumb) → PALM fallback.
 - Thumb + index → NONE.
-- Ring finger oscillation: hold three fingers, observe flicker frequency. Document. Expected pre-Phase-4 (no stability filter yet).
+- Ring finger oscillation: hold three fingers and observe flicker frequency.
+  Document the behavior. This was expected before Phase 4; current Phase 4
+  stability/cooldown filters exist but do not prove camera-specific reliability.
 
 **Phase gate:** All six target gestures plus NONE rejection work without filters.
 
@@ -1257,3 +1259,16 @@ Each phase has a separate failure surface:
 3. Thumb strict in v1. No "ignore thumb." ThumbState trichotomy later if needed.
 4. max_num_hands=1 for prototype. Return types stay as lists.
 5. Pointing_Up and Victory are metadata only in v1.
+
+---
+
+## Phase 5 scaffold status addendum
+
+Phase 5 infrastructure is present, but Phase 5 is not a full PASS until real recorded regression media exists and the regression suite runs against it.
+
+- Primary manifest-driven regression entries are required for Phase 5 completion.
+- Missing required primary clips keep Phase 5 at PARTIAL PASS.
+- Webcam and RealSense RGB camera-specific suites are supported as compatibility/acceptance suites.
+- Optional camera-specific clips do not block ordinary unit tests unless strict media validation or acceptance policy requires them.
+- RealSense validation and RealSense RGB regression capture are deferred until camera access is available.
+- See `docs/mediapipeline_current_state.md` and `docs/mediapipeline_recording_plan.md` for the current status and capture procedure.

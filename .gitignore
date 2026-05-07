@@ -23,9 +23,27 @@ dist/
 logs/*
 !logs/.gitkeep
 *.log
+outputs/
+recordings/
+tmp/
+temp/
+
+# Local model artifacts
+data/models/gesture_recognizer.task
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Local agent/tool state
+.claude/settings.local.json
+.codex/
+.agents/
 
 # Editor and OS
-.vscode/
+.vscode/browse.vc.db*
+.vscode/ipch/
 .idea/
 .DS_Store
 Thumbs.db

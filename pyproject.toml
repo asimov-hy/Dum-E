@@ -17,8 +17,21 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+camera = [
+  "opencv-python",
+  "numpy"
+]
+perception = [
+  "mediapipe>=0.10",
+  "opencv-python",
+  "numpy"
+]
+realsense = [
+  "pyrealsense2"
+]
 dev = [
   "pytest>=8.0",
+  "numpy",
   "ruff>=0.6"
 ]
 

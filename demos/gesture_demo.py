@@ -1,4 +1,4 @@
-"""Phase 2 gesture demo with MediaPipe canned labels."""
+"""Phase 4 gesture demo with filter-state debug output."""
 
 from __future__ import annotations
 
@@ -57,30 +57,43 @@ def main() -> int:
     try:
         source.start()
         while args.frames is None or captured < args.frames:
-            frame = source.get_frame()
+            try:
+                frame = source.get_frame()
+            except EOFError:
+                print("End of source stream.")
+                break
             validate_frame(frame)
 
             started_at = time.perf_counter()
             observations = gesture.analyze_frame(frame)
             events = gesture.events_from_observations(frame, observations)
+            filter_debug = gesture.last_filter_debug
             latency_ms = (time.perf_counter() - started_at) * 1000
 
             _log_frame(
                 observations=observations,
                 events=events,
+                filter_debug=filter_debug,
                 latency_ms=latency_ms,
                 log_observations=args.log_observations,
                 log_events=args.log_events,
+                log_filter_state=args.draw_filter_state,
             )
 
             if cv2 is not None:
-                bgr = np.ascontiguousarray(frame.rgb[:, :, ::-1])
+                display_rgb = frame.rgb
+                if args.show_flipped_display:
+                    display_rgb = np.ascontiguousarray(display_rgb[:, ::-1, :])
+                bgr = np.ascontiguousarray(display_rgb[:, :, ::-1])
                 draw_overlay(
                     bgr,
                     observations,
                     events,
                     cv2_module=cv2,
                     draw_landmarks=args.draw_landmarks,
+                    draw_finger_state=args.draw_finger_state,
+                    draw_filter_state=args.draw_filter_state,
+                    filter_debug=filter_debug,
                 )
                 cv2.imshow("DUM-E gesture demo", bgr)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -105,8 +118,11 @@ def draw_overlay(
     *,
     cv2_module: Any | None,
     draw_landmarks: bool = True,
+    draw_finger_state: bool = True,
+    draw_filter_state: bool = False,
+    filter_debug: dict[str, object] | None = None,
 ) -> np.ndarray:
-    """Draw Phase 2 overlay without assuming finger-state data exists."""
+    """Draw overlay without assuming finger-state data exists."""
 
     if cv2_module is None:
         return frame_bgr
@@ -122,6 +138,9 @@ def draw_overlay(
             (220, 220, 220),
             2,
         )
+        if draw_filter_state and filter_debug is not None:
+            y += 24
+            y = _draw_filter_debug(frame_bgr, y, filter_debug, cv2_module)
         return frame_bgr
 
     for observation in observations:
@@ -143,17 +162,18 @@ def draw_overlay(
             2,
         )
         y += 24
-        finger_text = "finger state: not available"
-        cv2_module.putText(
-            frame_bgr,
-            finger_text,
-            (12, y),
-            cv2_module.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            (180, 180, 180),
-            1,
-        )
-        y += 24
+        if draw_finger_state:
+            for finger_text in _finger_state_lines(observation):
+                cv2_module.putText(
+                    frame_bgr,
+                    finger_text,
+                    (12, y),
+                    cv2_module.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (180, 180, 180),
+                    1,
+                )
+                y += 24
 
     if events:
         event_names = ", ".join(event.type.name for event in events)
@@ -166,6 +186,10 @@ def draw_overlay(
             (255, 220, 80),
             2,
         )
+        y += 24
+
+    if draw_filter_state and filter_debug is not None:
+        _draw_filter_debug(frame_bgr, y, filter_debug, cv2_module)
 
     return frame_bgr
 
@@ -192,18 +216,42 @@ def _draw_hand_skeleton(
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="DUM-E Phase 2 gesture demo")
-    parser.add_argument("--source", default="webcam", help="fake, webcam, opencv, or realsense")
+    parser = argparse.ArgumentParser(description="DUM-E Phase 4 gesture demo")
+    parser.add_argument(
+        "--source",
+        default="webcam",
+        help="fake, webcam, opencv, realsense, or video:<path>",
+    )
     parser.add_argument("--frames", type=int, default=None, help="optional frame limit")
     parser.add_argument("--width", type=int, default=None, help="requested source width")
     parser.add_argument("--height", type=int, default=None, help="requested source height")
     parser.add_argument("--device", default="0", help="OpenCV device index or path")
     parser.add_argument("--model-path", default="data/models/gesture_recognizer.task")
     parser.add_argument("--draw-landmarks", action="store_true")
+    parser.add_argument("--draw-finger-state", action="store_true")
+    parser.add_argument("--draw-filter-state", action="store_true")
+    parser.add_argument(
+        "--show-flipped-display",
+        type=_parse_bool,
+        default=False,
+        metavar="true|false",
+        help="mirror only the displayed frame; inference always uses the original frame",
+    )
     parser.add_argument("--log-observations", action="store_true")
     parser.add_argument("--log-events", action="store_true")
     parser.add_argument("--no-display", action="store_true", help="run without cv2.imshow")
     return parser.parse_args()
+
+
+def _parse_bool(value: str | bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise argparse.ArgumentTypeError("expected true or false")
 
 
 def _source_kwargs(args: argparse.Namespace) -> dict[str, object]:
@@ -229,18 +277,22 @@ def _log_frame(
     *,
     observations: list[GestureObservation],
     events: list[GestureEvent],
+    filter_debug: dict[str, object],
     latency_ms: float,
     log_observations: bool,
     log_events: bool,
+    log_filter_state: bool,
 ) -> None:
     print(f"latency_ms={latency_ms:.2f}")
     if log_observations:
         for obs in observations:
+            finger_state = _finger_state_log(obs)
             print(
                 "observation "
                 f"type={obs.type.name} source={obs.source.name} "
                 f"raw_label={obs.raw_label} raw_confidence={obs.raw_label_confidence} "
-                f"handedness={obs.handedness} hand_index={obs.hand_index}"
+                f"handedness={obs.handedness} hand_index={obs.hand_index} "
+                f"{finger_state}"
             )
     if log_events:
         for event in events:
@@ -249,6 +301,81 @@ def _log_frame(
                 f"type={event.type.name} source={event.source.name} "
                 f"confidence={event.confidence} hand_index={event.hand_index}"
             )
+    if log_filter_state:
+        print("filter " + " ".join(_filter_debug_lines(filter_debug)))
+
+
+def _finger_state_lines(observation: GestureObservation) -> list[str]:
+    if observation.finger_state_result is None or observation.finger_state is None:
+        return ["finger state: not available"]
+
+    state = observation.finger_state
+    lines = [
+        "fingers "
+        f"T={int(state.thumb)} I={int(state.index)} M={int(state.middle)} "
+        f"R={int(state.ring)} P={int(state.pinky)} count={observation.finger_count}"
+    ]
+    if observation.finger_state_result.margins:
+        margins = observation.finger_state_result.margins
+        lines.append(
+            "margins "
+            f"T={margins['thumb']:.3f} I={margins['index']:.3f} "
+            f"M={margins['middle']:.3f} R={margins['ring']:.3f} "
+            f"P={margins['pinky']:.3f}"
+        )
+    return lines
+
+
+def _finger_state_log(observation: GestureObservation) -> str:
+    if observation.finger_state_result is None or observation.finger_state is None:
+        return "finger_state=not_available"
+
+    state = observation.finger_state
+    return (
+        "finger_state="
+        f"thumb={state.thumb},index={state.index},middle={state.middle},"
+        f"ring={state.ring},pinky={state.pinky} "
+        f"finger_count={observation.finger_count} "
+        f"margins={observation.finger_state_result.margins}"
+    )
+
+
+def _draw_filter_debug(
+    frame_bgr: np.ndarray,
+    y: int,
+    filter_debug: dict[str, object],
+    cv2_module: Any,
+) -> int:
+    for line in _filter_debug_lines(filter_debug):
+        cv2_module.putText(
+            frame_bgr,
+            line,
+            (12, y),
+            cv2_module.FONT_HERSHEY_SIMPLEX,
+            0.48,
+            (220, 200, 120),
+            1,
+        )
+        y += 22
+    return y
+
+
+def _filter_debug_lines(filter_debug: dict[str, object]) -> list[str]:
+    stability_counts = filter_debug.get("stability_counts", {})
+    stability_required = filter_debug.get("stability_required_frames", "?")
+    return [
+        "confidence "
+        f"pass={filter_debug.get('confidence_pass_count', 0)} "
+        f"drop={filter_debug.get('confidence_drop_count', 0)}",
+        f"none_drop={filter_debug.get('none_drop_count', 0)}",
+        "stability "
+        f"pass={filter_debug.get('stability_pass_count', 0)} "
+        f"counts={stability_counts}/{stability_required}",
+        "cooldown "
+        f"pass={filter_debug.get('cooldown_pass_count', 0)} "
+        f"drop={filter_debug.get('cooldown_drop_count', 0)}",
+        f"emitted={filter_debug.get('emitted_count', 0)}",
+    ]
 
 
 if __name__ == "__main__":

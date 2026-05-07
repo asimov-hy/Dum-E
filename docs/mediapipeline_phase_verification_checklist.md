@@ -977,7 +977,9 @@ Do not mark Phase 5 complete if any of these are true:
 Phase 5 passes when:
 
 - [ ] Full automated test suite passes.
-- [ ] Recorded-media regression tests pass or failures are documented with thresholds.
+- [ ] Recorded-media regression tests run against required primary clips and
+      pass within accepted thresholds. Documented failures keep Phase 5 at FAIL
+      or PARTIAL PASS.
 - [ ] Final demo works with overlays, logs, and clean shutdown.
 - [ ] Packaging and dependency extras are correct.
 - [ ] Model download/setup is reproducible.
@@ -1038,3 +1040,20 @@ Use this after all phases are complete.
 - [ ] Manual live demo procedure is documented.
 
 Final result: `PASS / FAIL`
+
+---
+
+# Phase 5 scaffold addendum
+
+Phase 5 infrastructure can be reviewed separately from full Phase 5 completion.
+
+- [ ] Manifest-driven regression infrastructure exists.
+- [ ] A media status checker reports present, missing, required, and optional clips.
+- [ ] A recording scaffold exists for future primary, webcam, and RealSense RGB clips.
+- [ ] Missing required primary clips are visible and keep Phase 5 at `PARTIAL PASS`.
+- [ ] Strict media validation fails when required Phase 5 clips are missing.
+- [ ] Optional webcam and RealSense RGB clips do not block ordinary unit tests unless promoted to acceptance requirements.
+- [ ] RealSense validation remains deferred until hardware access is available.
+- [ ] No fake media has been added, and missing clips are not marked present.
+
+Phase 5 must not be marked `PASS` until the required primary recorded media exists and regression tests run against it.

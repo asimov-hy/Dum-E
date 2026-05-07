@@ -1,4 +1,4 @@
-"""MediaPipe Gesture Recognizer service for Phase 2 canned gestures."""
+"""MediaPipe Gesture Recognizer service with Phase 4 filtering."""
 
 from __future__ import annotations
 
@@ -9,7 +9,8 @@ from typing import Any
 
 from core.frame import Frame, validate_frame
 from core.landmarks import Landmark2D, Landmark3D
-from perception.filters import DropNoneFilter, observations_to_events
+from perception.filters import FilterChain
+from perception.finger_state import FingerStateDetector
 from perception.mapper import GestureMapper
 from perception.types import GestureEvent, GestureObservation, GestureServiceConfig
 
@@ -22,15 +23,20 @@ class _MediaPipeRuntime:
 
 
 class GestureService:
-    """Analyze RGB frames and emit command-relevant canned gesture events."""
+    """Analyze RGB frames and emit command-relevant gesture events."""
 
     def __init__(self, config: GestureServiceConfig) -> None:
         self.config = config
         self._validate_model_path(config.model_path)
         self._runtime = _create_mediapipe_runtime(config)
-        self._mapper = GestureMapper()
-        self._drop_none = DropNoneFilter()
+        self._finger_detector = FingerStateDetector()
+        self._mapper = GestureMapper(config.gesture_config)
+        self._filters = FilterChain(config.filter_config)
         self._last_timestamp_ms = -1
+
+    @property
+    def last_filter_debug(self) -> dict[str, object]:
+        return dict(self._filters.last_debug)
 
     def analyze_frame(self, frame: Frame) -> list[GestureObservation]:
         """Run MediaPipe inference and return all observations, including NONE."""
@@ -54,8 +60,7 @@ class GestureService:
     ) -> list[GestureEvent]:
         """Filter existing observations into command events without inference."""
 
-        del frame
-        return observations_to_events(self._drop_none.apply(observations))
+        return self._filters.apply(observations, frame=frame)
 
     def process_frame(self, frame: Frame) -> list[GestureEvent]:
         """Convenience wrapper: analyze once, then convert observations to events."""
@@ -119,11 +124,27 @@ class GestureService:
                     for landmark in hand_world_landmarks[hand_index]
                 )
 
+            finger_state_result = self._finger_detector.detect(
+                landmarks_2d,
+                world_landmarks,
+                handedness,
+            )
+            finger_state = finger_state_result.state
+            finger_count = sum(
+                [
+                    finger_state.thumb,
+                    finger_state.index,
+                    finger_state.middle,
+                    finger_state.ring,
+                    finger_state.pinky,
+                ]
+            )
             mapped = self._mapper.map(
                 raw_label=raw_label,
                 raw_confidence=raw_label_confidence,
-                finger_state_result=None,
+                finger_state_result=finger_state_result,
             )
+
             observations.append(
                 GestureObservation(
                     type=mapped.type,
@@ -134,9 +155,9 @@ class GestureService:
                     hand_index=hand_index,
                     landmarks=landmarks_2d,
                     world_landmarks=world_landmarks,
-                    finger_count=None,
-                    finger_state=None,
-                    finger_state_result=None,
+                    finger_count=finger_count,
+                    finger_state=finger_state,
+                    finger_state_result=finger_state_result,
                     raw_label=raw_label,
                     raw_label_confidence=raw_label_confidence,
                     camera_name=frame.camera_name,

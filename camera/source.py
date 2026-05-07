@@ -7,6 +7,7 @@ import numpy as np
 from camera.lerobot_adapter import create_lerobot_source
 from camera.opencv_backend import OpenCVFrameSource
 from camera.realsense_backend import RealSenseFrameSource
+from camera.video_backend import VideoFileFrameSource
 from core.frame import Frame, validate_frame
 from core.types import FrameSource
 
@@ -115,6 +116,9 @@ def create_source(backend: str = "fake", **kwargs: object) -> FrameSource:
     """Create a camera source by backend name."""
 
     normalized = backend.lower()
+    if normalized.startswith("video:"):
+        path = backend.split(":", 1)[1]
+        return VideoFileFrameSource(path, **kwargs)
     if normalized == "fake":
         return FakeSource(**kwargs)
     if normalized in {"webcam", "opencv"}:
@@ -125,10 +129,16 @@ def create_source(backend: str = "fake", **kwargs: object) -> FrameSource:
         return RealSenseFrameSource(**kwargs)
     if normalized == "lerobot":
         return create_lerobot_source(**kwargs)
+    if normalized == "video":
+        if "path" not in kwargs:
+            raise ValueError("backend='video' requires a path=... argument")
+        path = kwargs["path"]
+        kwargs = {key: value for key, value in kwargs.items() if key != "path"}
+        return VideoFileFrameSource(path, **kwargs)
 
     raise ValueError(
         f"Unknown camera backend '{backend}'. "
-        "Supported backends: fake, webcam, opencv, realsense, lerobot."
+        "Supported backends: fake, webcam, opencv, realsense, lerobot, video:<path>."
     )
 
 
