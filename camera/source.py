@@ -4,7 +4,6 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from camera.lerobot_adapter import create_lerobot_source
 from camera.opencv_backend import OpenCVFrameSource
 from camera.realsense_backend import RealSenseFrameSource
 from camera.video_backend import VideoFileFrameSource
@@ -128,7 +127,7 @@ def create_source(backend: str = "fake", **kwargs: object) -> FrameSource:
     if normalized == "realsense":
         return RealSenseFrameSource(**kwargs)
     if normalized == "lerobot":
-        return create_lerobot_source(**kwargs)
+        return _create_lerobot_source(**kwargs)
     if normalized == "video":
         if "path" not in kwargs:
             raise ValueError("backend='video' requires a path=... argument")
@@ -146,3 +145,18 @@ def _coerce_device(device: object) -> object:
     if isinstance(device, str) and device.lstrip("-").isdigit():
         return int(device)
     return device
+
+
+def _create_lerobot_source(**kwargs: object) -> FrameSource:
+    try:
+        from dume.integrations.lerobot.camera_adapter import create_lerobot_source
+    except ModuleNotFoundError as exc:
+        if exc.name == "dume":
+            raise NotImplementedError(
+                "LeRobot camera integration is not available in this repository yet. "
+                "Use backend='fake', 'webcam', or 'realsense', or add a thin adapter "
+                "around an existing LeRobot camera class."
+            ) from exc
+        raise
+
+    return create_lerobot_source(**kwargs)

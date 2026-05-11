@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 
-DEFAULT_MANIFEST = Path("data/test_media/manifest.json")
+DEFAULT_MANIFEST = Path("data/mediapipe/regression_media/manifest.json")
 
 
 def main() -> int:

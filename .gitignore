@@ -29,7 +29,11 @@ tmp/
 temp/
 
 # Local model artifacts
-data/models/gesture_recognizer.task
+data/mediapipe/models/gesture_recognizer.task
+
+# Local MediaPipe diagnostics
+data/mediapipe/diagnostics/*
+!data/mediapipe/diagnostics/README.md
 
 # Local secrets
 .env
@@ -37,7 +41,7 @@ data/models/gesture_recognizer.task
 !.env.example
 
 # Local agent/tool state
-.claude/settings.local.json
+.claude/
 .codex/
 .agents/
 

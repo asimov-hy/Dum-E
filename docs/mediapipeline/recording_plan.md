@@ -70,9 +70,9 @@ Recommended duration: 3 to 8 seconds per clip.
 Example webcam recording:
 
 ```bash
-python scripts/record_regression_clip.py \
+python scripts/mediapipe/record_regression_clip.py \
   --source webcam \
-  --output data/test_media/webcam/thumbs_up_clear.mp4 \
+  --output data/mediapipe/regression_media/webcam/thumbs_up_clear.mp4 \
   --clip-id webcam_thumbs_up_clear \
   --expected THUMBS_UP \
   --suite webcam \
@@ -87,9 +87,9 @@ python scripts/record_regression_clip.py \
 Example RealSense RGB recording:
 
 ```bash
-python scripts/record_regression_clip.py \
+python scripts/mediapipe/record_regression_clip.py \
   --source realsense \
-  --output data/test_media/realsense_rgb/thumbs_up_clear.mp4 \
+  --output data/mediapipe/regression_media/realsense_rgb/thumbs_up_clear.mp4 \
   --clip-id realsense_rgb_thumbs_up_clear \
   --expected THUMBS_UP \
   --suite realsense_rgb \
@@ -106,8 +106,8 @@ suggested manifest entry. It does not edit `manifest.json` automatically.
 
 ## Manifest Update Procedure
 
-1. Place the clip under `data/test_media/<suite>/`.
-2. Review the sidecar JSON written by `scripts/record_regression_clip.py`.
+1. Place the clip under `data/mediapipe/regression_media/<suite>/`.
+2. Review the sidecar JSON written by `scripts/mediapipe/record_regression_clip.py`.
 3. Add or update the manifest entry.
 4. Set `present=true` only after the file exists and is readable.
 5. Use `required_for_phase5=true` only for primary clips needed for Phase 5 PASS.
@@ -120,10 +120,10 @@ suggested manifest entry. It does not edit `manifest.json` automatically.
 Run:
 
 ```bash
-python scripts/check_regression_media.py
-python scripts/check_regression_media.py --suite webcam
-python scripts/check_regression_media.py --suite realsense_rgb
-python scripts/check_regression_media.py --strict
+python scripts/mediapipe/check_regression_media.py
+python scripts/mediapipe/check_regression_media.py --suite webcam
+python scripts/mediapipe/check_regression_media.py --suite realsense_rgb
+python scripts/mediapipe/check_regression_media.py --strict
 ```
 
 Strict mode is expected to fail until required primary clips are present.

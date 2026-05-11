@@ -29,7 +29,7 @@ regression media: 1 passed, 21 skipped
 ```
 
 The skipped regression-media cases are skipped because clips are missing or
-marked `present=false` in `data/test_media/manifest.json`.
+marked `present=false` in `data/mediapipe/regression_media/manifest.json`.
 
 ## Manual Validation
 
@@ -53,7 +53,7 @@ until recorded evidence says otherwise.
 - Strict checks fail when required clips are missing:
 
 ```bash
-python scripts/check_regression_media.py --strict
+python scripts/mediapipe/check_regression_media.py --strict
 DUME_REQUIRE_REGRESSION_MEDIA=1 python -m pytest -q tests/test_regression_media.py
 ```
 

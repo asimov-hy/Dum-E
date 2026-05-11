@@ -35,7 +35,7 @@ below.
 - Extended `ControlSession` to load, create, save, and summarize workspace
   config.
 - Added `dume.logging` helpers and `logs/.gitkeep`.
-- Added `data/manuals/.gitkeep` for future manual inputs.
+- Added `data/manuals/processed/.gitkeep` for future manual inputs.
 - Rewrote README and TECHNICAL docs around current truth versus roadmap.
 - Added tests for control interfaces, workspace config, logging, and README
   command truthfulness.

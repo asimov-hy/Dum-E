@@ -306,23 +306,23 @@ git diff --check
 MediaPipeline checks:
 
 ```bash
-python scripts/download_gesture_model.py
+python scripts/mediapipe/download_gesture_model.py
 python -m pytest -q
 python -m pytest -q tests/test_regression_media.py
-python scripts/check_regression_media.py
-python scripts/check_regression_media.py --strict
+python scripts/mediapipe/check_regression_media.py
+python scripts/mediapipe/check_regression_media.py --strict
 ```
 
 `tests/test_regression_media.py` validates the manifest without a physical
 camera. Clip executions are skipped until the files declared in
-`data/test_media/manifest.json` are present, so that state is not a Phase 5 PASS.
+`data/mediapipe/regression_media/manifest.json` are present, so that state is not a Phase 5 PASS.
 Strict regression media checks are expected to fail while required Phase 5
 primary clips are missing.
 
 Current MediaPipeline state and camera-dependent TODOs are tracked in:
 
-- `docs/mediapipeline_current_state.md`
-- `docs/mediapipeline_recording_plan.md`
+- `docs/mediapipeline/current_state.md`
+- `docs/mediapipeline/recording_plan.md`
 
 Webcam and RealSense RGB regression suites are separate. The RealSense suite is
 deferred until camera access is available because RealSense behavior may differ
@@ -330,7 +330,7 @@ from webcam behavior.
 
 Diagnostic script:
 
-- `scripts/diagnose_gesture_channel_order.py` compares direct OpenCV camera
+- `scripts/mediapipe/diagnose_gesture_channel_order.py` compares direct OpenCV camera
   frames with BGR-to-RGB converted frames when debugging camera-specific
   MediaPipe canned-label failures. It is diagnostic only and is not part of
   normal validation.
@@ -339,12 +339,12 @@ Diagnostic script:
 
 Recommended policy: track the checksum, keep the model binary external/local.
 
-- `data/models/gesture_recognizer.task.sha256` should be tracked. It defines
+- `data/mediapipe/models/gesture_recognizer.task.sha256` should be tracked. It defines
   the expected SHA-256 for the MediaPipe gesture recognizer artifact.
-- `data/models/gesture_recognizer.task` should remain local or be provided by
+- `data/mediapipe/models/gesture_recognizer.task` should remain local or be provided by
   external artifact storage. Do not add it to normal git history unless the
   owner explicitly chooses to track the binary or use Git LFS.
-- `scripts/download_gesture_model.py` recreates the local model and verifies it
+- `scripts/mediapipe/download_gesture_model.py` recreates the local model and verifies it
   against the checksum when the checksum file exists.
 - Runtime code must not download the model automatically.
 - A missing model should fail clearly with setup instructions, not silently

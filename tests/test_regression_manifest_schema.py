@@ -4,7 +4,7 @@ import sys
 
 import pytest
 
-import scripts.check_regression_media as checker
+import scripts.mediapipe.check_regression_media as checker
 
 
 MANIFEST_PATH = checker.DEFAULT_MANIFEST
@@ -61,7 +61,7 @@ def test_manifest_declares_primary_webcam_and_realsense_suites() -> None:
     assert {"webcam", "realsense"} <= backends
 
 
-def test_media_checker_reports_missing_required_phase5_clips() -> None:
+def test_regression_media_checker_reports_missing_required_phase5_clips() -> None:
     summary = checker.summarize_manifest(
         checker.load_manifest(MANIFEST_PATH),
         manifest_path=MANIFEST_PATH,
@@ -72,7 +72,7 @@ def test_media_checker_reports_missing_required_phase5_clips() -> None:
     assert "primary" in summary["by_suite"]
 
 
-def test_media_checker_non_strict_exits_zero(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_regression_media_checker_non_strict_exits_zero(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         sys,
         "argv",
@@ -82,7 +82,7 @@ def test_media_checker_non_strict_exits_zero(monkeypatch: pytest.MonkeyPatch) ->
     assert checker.main() == 0
 
 
-def test_media_checker_strict_exits_nonzero_for_missing_required_clips(
+def test_regression_media_checker_strict_exits_nonzero_for_missing_required_clips(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -94,7 +94,7 @@ def test_media_checker_strict_exits_nonzero_for_missing_required_clips(
     assert checker.main() == 1
 
 
-def test_media_checker_suite_filter_limits_report() -> None:
+def test_regression_media_checker_suite_filter_limits_report() -> None:
     manifest = checker.load_manifest(MANIFEST_PATH)
     summary = checker.summarize_manifest(
         manifest,

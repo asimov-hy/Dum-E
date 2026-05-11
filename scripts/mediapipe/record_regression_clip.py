@@ -112,7 +112,7 @@ def record_clip(args: argparse.Namespace) -> None:
 
 def _load_frame_tools() -> tuple[Any, Any]:
     # Keep --help and import-time scaffold tests free of camera/OpenCV imports.
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[2]
     repo_root_text = str(repo_root)
     if repo_root_text not in sys.path:
         sys.path.insert(0, repo_root_text)

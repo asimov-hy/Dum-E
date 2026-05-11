@@ -1,7 +1,7 @@
 """Download and verify the MediaPipe gesture recognizer model.
 
 The preferred Phase 5 path is to keep
-``data/models/gesture_recognizer.task.sha256`` under version control. When that
+``data/mediapipe/models/gesture_recognizer.task.sha256`` under version control. When that
 checksum file exists, this script verifies both existing and newly downloaded
 model files against it and fails clearly on mismatch.
 """
@@ -19,7 +19,7 @@ DEFAULT_URL = (
     "https://storage.googleapis.com/mediapipe-models/gesture_recognizer/"
     "gesture_recognizer/float16/1/gesture_recognizer.task"
 )
-DEFAULT_OUTPUT = Path("data/models/gesture_recognizer.task")
+DEFAULT_OUTPUT = Path("data/mediapipe/models/gesture_recognizer.task")
 
 
 def main() -> int:
@@ -64,7 +64,7 @@ def main() -> int:
         if expected_sha256 is None:
             print(
                 "No expected SHA-256 was provided; checksum was reported but "
-                "not verified. Save it to data/models/gesture_recognizer.task.sha256 "
+                "not verified. Save it to data/mediapipe/models/gesture_recognizer.task.sha256 "
                 "or pass --sha256 on future downloads."
             )
 

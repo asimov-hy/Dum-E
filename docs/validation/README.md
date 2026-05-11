@@ -8,10 +8,10 @@ of replacing them.
 - `README.md`: concise human-facing overview and basic setup.
 - `docs/TECHNICAL.md`: canonical agent/developer RAG guide.
 - `docs/validation/README.md`: validation command index.
-- `docs/mediapipeline_current_state.md`: current MediaPipeline status.
-- `docs/mediapipeline_recording_plan.md`: how to record required clips.
-- `docs/mediapipeline_phase_verification_checklist.md`: phase checklist.
-- `data/test_media/README.md`: test-media directory instructions.
+- `docs/mediapipeline/current_state.md`: current MediaPipeline status.
+- `docs/mediapipeline/recording_plan.md`: how to record required clips.
+- `docs/mediapipeline/phase_verification_checklist.md`: phase checklist.
+- `data/mediapipe/regression_media/README.md`: regression-media directory instructions.
 
 ## General Validation
 
@@ -29,10 +29,10 @@ architecture boundaries.
 ## MediaPipeline Validation
 
 ```bash
-python scripts/download_gesture_model.py
+python scripts/mediapipe/download_gesture_model.py
 python -m pytest -q tests/test_regression_media.py
-python scripts/check_regression_media.py
-python scripts/check_regression_media.py --strict
+python scripts/mediapipe/check_regression_media.py
+python scripts/mediapipe/check_regression_media.py --strict
 ```
 
 Strict media validation is expected to fail while required primary clips are
@@ -40,26 +40,26 @@ missing. That failure keeps Phase 5 at PARTIAL PASS and must not be hidden with
 fake media or changed manifest truth.
 
 The gesture model binary is a local/external artifact. Track
-`data/models/gesture_recognizer.task.sha256` and use
-`python scripts/download_gesture_model.py` to recreate or verify
-`data/models/gesture_recognizer.task`.
+`data/mediapipe/models/gesture_recognizer.task.sha256` and use
+`python scripts/mediapipe/download_gesture_model.py` to recreate or verify
+`data/mediapipe/models/gesture_recognizer.task`.
 
 Current status:
 
-- `docs/mediapipeline_current_state.md`
-- `data/test_media/manifest.json`
+- `docs/mediapipeline/current_state.md`
+- `data/mediapipe/regression_media/manifest.json`
 
 Capture plan:
 
-- `docs/mediapipeline_recording_plan.md`
+- `docs/mediapipeline/recording_plan.md`
 
 Phase checklist:
 
-- `docs/mediapipeline_phase_verification_checklist.md`
+- `docs/mediapipeline/phase_verification_checklist.md`
 
 ## Diagnostic Scripts
 
-`scripts/diagnose_gesture_channel_order.py` is diagnostic only. Use it when a
+`scripts/mediapipe/diagnose_gesture_channel_order.py` is diagnostic only. Use it when a
 camera appears to detect hands but MediaPipe canned labels differ between raw
 OpenCV BGR input and BGR-to-RGB converted input. It compares `AS_IS` and
 `BGR2RGB` paths directly against MediaPipe output and is not part of normal

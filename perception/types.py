@@ -123,7 +123,7 @@ class FilterConfig:
 
 @dataclass
 class GestureServiceConfig:
-    model_path: str = "data/models/gesture_recognizer.task"
+    model_path: str = "data/mediapipe/models/gesture_recognizer.task"
     max_num_hands: int = 1
     min_hand_detection_confidence: float = 0.5
     min_hand_presence_confidence: float = 0.5

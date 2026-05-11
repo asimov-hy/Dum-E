@@ -5,7 +5,7 @@ import sys
 from argparse import Namespace
 from pathlib import Path
 
-import scripts.record_regression_clip as recorder
+import scripts.mediapipe.record_regression_clip as recorder
 
 
 def test_recording_script_imports_without_camera_hardware() -> None:
@@ -14,7 +14,7 @@ def test_recording_script_imports_without_camera_hardware() -> None:
 
 def test_recording_script_help_runs_without_camera_hardware() -> None:
     result = subprocess.run(
-        [sys.executable, "scripts/record_regression_clip.py", "--help"],
+        [sys.executable, "scripts/mediapipe/record_regression_clip.py", "--help"],
         check=False,
         cwd=Path(__file__).resolve().parents[1],
         capture_output=True,
@@ -32,7 +32,7 @@ def test_recording_argparse_accepts_required_scaffold_fields() -> None:
             "--source",
             "webcam",
             "--output",
-            "data/test_media/webcam/thumbs_up.mp4",
+            "data/mediapipe/regression_media/webcam/thumbs_up.mp4",
             "--clip-id",
             "webcam_thumbs_up",
             "--expected",
@@ -78,7 +78,7 @@ def test_recording_metadata_and_manifest_suggestion_are_hardware_free() -> None:
     metadata = recorder._metadata(args, frame_count=90)
     manifest_entry = recorder._suggest_manifest_entry(
         args,
-        Path("data/test_media/custom/clip.mp4"),
+        Path("data/mediapipe/regression_media/custom/clip.mp4"),
     )
 
     assert metadata["frame_count"] == 90

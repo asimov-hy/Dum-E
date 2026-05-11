@@ -173,7 +173,7 @@ class GestureService:
         if not path.is_file():
             raise FileNotFoundError(
                 f"MediaPipe gesture model not found at '{model_path}'. "
-                "Run `python scripts/download_gesture_model.py` or pass "
+                "Run `python scripts/mediapipe/download_gesture_model.py` or pass "
                 "GestureServiceConfig(model_path=...) with a local .task file."
             )
 

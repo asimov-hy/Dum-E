@@ -41,9 +41,9 @@ python -m pytest -q tests/test_regression_media.py
 Check media status without MediaPipe or camera hardware:
 
 ```bash
-python scripts/check_regression_media.py
-python scripts/check_regression_media.py --suite realsense_rgb
-python scripts/check_regression_media.py --strict
+python scripts/mediapipe/check_regression_media.py
+python scripts/mediapipe/check_regression_media.py --suite realsense_rgb
+python scripts/mediapipe/check_regression_media.py --strict
 ```
 
 Strict mode is expected to fail until the required primary clips exist.
@@ -51,9 +51,9 @@ Strict mode is expected to fail until the required primary clips exist.
 Record a future clip:
 
 ```bash
-python scripts/record_regression_clip.py \
+python scripts/mediapipe/record_regression_clip.py \
   --source webcam \
-  --output data/test_media/webcam/thumbs_up_clear.mp4 \
+  --output data/mediapipe/regression_media/webcam/thumbs_up_clear.mp4 \
   --clip-id webcam_thumbs_up_clear \
   --expected THUMBS_UP \
   --suite webcam \

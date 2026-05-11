@@ -24,7 +24,7 @@ camera/
   source.py             Factory function
   opencv_backend.py     OpenCV VideoCapture backend
   realsense_backend.py  RealSense D435 backend (lazy import)
-  lerobot_adapter.py    OR: thin wrapper around LeRobot camera classes
+  src/dume/integrations/lerobot/camera_adapter.py    OR: thin wrapper around LeRobot camera classes
 
 perception/
   __init__.py
@@ -305,7 +305,7 @@ class FilterConfig:
 
 @dataclass
 class GestureServiceConfig:
-    model_path: str = "data/models/gesture_recognizer.task"
+    model_path: str = "data/mediapipe/models/gesture_recognizer.task"
     max_num_hands: int = 1
     min_hand_detection_confidence: float = 0.5
     min_hand_presence_confidence: float = 0.5
@@ -827,7 +827,7 @@ tests/test_import_boundaries.py
 ```
 camera/opencv_backend.py
 camera/realsense_backend.py      # optional, lazy import
-camera/lerobot_adapter.py        # optional
+src/dume/integrations/lerobot/camera_adapter.py        # optional
 camera/source.py                 # factory
 demos/camera_smoke.py
 tests/test_camera_fake_source.py
@@ -871,13 +871,13 @@ tests/test_gesture_service_timestamp.py
 tests/test_canned_mapper.py
 tests/test_drop_none_filter.py
 tests/test_overlay_no_finger_state.py
-data/models/gesture_recognizer.task
-scripts/download_gesture_model.py
+data/mediapipe/models/gesture_recognizer.task
+scripts/mediapipe/download_gesture_model.py
 ```
 
 **Tasks:**
 
-1. Download gesture_recognizer.task (~5MB). Store in data/models/. Pin path in config. Download script + SHA-256 verification. No runtime download.
+1. Download gesture_recognizer.task (~5MB). Store in data/mediapipe/models/. Pin path in config. Download script + SHA-256 verification. No runtime download.
 
 2. GestureService with analyze_frame(), events_from_observations(), process_frame(). Timestamp guard enforcing strictly increasing timestamp_ms.
 
@@ -1067,9 +1067,9 @@ emitted events
 
 ```
 demos/gesture_demo.py            # final version
-scripts/download_gesture_model.py
+scripts/mediapipe/download_gesture_model.py
 tests/test_regression_media.py
-data/test_media/                 # recorded clips
+data/mediapipe/regression_media/                 # recorded clips
 ```
 
 **Demo script** (`demos/gesture_demo.py`):
@@ -1149,9 +1149,9 @@ dev = ["pytest", "numpy"]
 **Model management:**
 
 ```
-scripts/download_gesture_model.py    # downloads + SHA-256 verification
-data/models/gesture_recognizer.task  # local, not runtime-downloaded
-data/models/gesture_recognizer.task.sha256
+scripts/mediapipe/download_gesture_model.py    # downloads + SHA-256 verification
+data/mediapipe/models/gesture_recognizer.task  # local, not runtime-downloaded
+data/mediapipe/models/gesture_recognizer.task.sha256
 ```
 
 **Phase gate:** CI runs unit tests and recorded-media regression tests without a physical camera.
@@ -1271,4 +1271,4 @@ Phase 5 infrastructure is present, but Phase 5 is not a full PASS until real rec
 - Webcam and RealSense RGB camera-specific suites are supported as compatibility/acceptance suites.
 - Optional camera-specific clips do not block ordinary unit tests unless strict media validation or acceptance policy requires them.
 - RealSense validation and RealSense RGB regression capture are deferred until camera access is available.
-- See `docs/mediapipeline_current_state.md` and `docs/mediapipeline_recording_plan.md` for the current status and capture procedure.
+- See `docs/mediapipeline/current_state.md` and `docs/mediapipeline/recording_plan.md` for the current status and capture procedure.

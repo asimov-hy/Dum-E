@@ -77,13 +77,13 @@ starts.
 Download or verify the MediaPipe gesture model:
 
 ```bash
-python scripts/download_gesture_model.py
+python scripts/mediapipe/download_gesture_model.py
 ```
 
-The default model path is `data/models/gesture_recognizer.task`. The model
+The default model path is `data/mediapipe/models/gesture_recognizer.task`. The model
 binary is a local/external artifact; the checksum
-`data/models/gesture_recognizer.task.sha256` should be tracked so
-`scripts/download_gesture_model.py` can recreate and verify the local model.
+`data/mediapipe/models/gesture_recognizer.task.sha256` should be tracked so
+`scripts/mediapipe/download_gesture_model.py` can recreate and verify the local model.
 Runtime code does not download models automatically. A missing model causes
 `GestureService` to raise with download instructions.
 
@@ -119,16 +119,16 @@ display.
 
 ## Recorded-Media Regression
 
-The regression manifest lives at `data/test_media/manifest.json`. Put clips at
-the listed paths under `data/test_media/`, or set `DUME_TEST_MEDIA_DIR` to an
+The regression manifest lives at `data/mediapipe/regression_media/manifest.json`. Put clips at
+the listed paths under `data/mediapipe/regression_media/`, or set `DUME_TEST_MEDIA_DIR` to an
 external media root with the same relative paths. Set a clip's `present` field
 to `true` once the file exists.
 
 Current Phase 5 status is **PARTIAL PASS**: the harness and manifest exist, but
 the required recorded clips are missing. See:
 
-- `docs/mediapipeline_current_state.md`
-- `docs/mediapipeline_recording_plan.md`
+- `docs/mediapipeline/current_state.md`
+- `docs/mediapipeline/recording_plan.md`
 
 Run:
 
@@ -139,8 +139,8 @@ python -m pytest -q tests/test_regression_media.py
 Check media status:
 
 ```bash
-python scripts/check_regression_media.py
-python scripts/check_regression_media.py --strict
+python scripts/mediapipe/check_regression_media.py
+python scripts/mediapipe/check_regression_media.py --strict
 ```
 
 Strict mode is expected to fail until required primary clips are recorded.
@@ -148,9 +148,9 @@ Strict mode is expected to fail until required primary clips are recorded.
 Record future clips:
 
 ```bash
-python scripts/record_regression_clip.py \
+python scripts/mediapipe/record_regression_clip.py \
   --source webcam \
-  --output data/test_media/webcam/thumbs_up_clear.mp4 \
+  --output data/mediapipe/regression_media/webcam/thumbs_up_clear.mp4 \
   --clip-id webcam_thumbs_up_clear \
   --expected THUMBS_UP \
   --suite webcam \
@@ -230,19 +230,34 @@ data/
   poses.json
   motions/
   manuals/
-  models/
-  test_media/
+    raw/
+    processed/
+    extracted/
+    annotations/
+  mediapipe/
+    models/
+    regression_media/
+    diagnostics/
+  lerobot/
+    datasets/
+    episodes/
+    policies/
+    calibration/
 logs/
 core/
 camera/
 perception/
 demos/
 scripts/
+  manuals/
+  mediapipe/
+  lerobot/
 src/dume/
   main.py
   config.py
   logging.py
   control/
+  integrations/
 tests/
 docs/
 ```
@@ -251,7 +266,7 @@ docs/
 
 Near-term:
 
-- Record the MediaPipeline regression clips declared in `data/test_media/manifest.json`.
+- Record the MediaPipeline regression clips declared in `data/mediapipe/regression_media/manifest.json`.
 - Complete manual webcam validation for Phase 3 and Phase 4 gestures/filters.
 - Add manual and autonomy packages only when their first scoped interfaces/tests
   are part of the same change.

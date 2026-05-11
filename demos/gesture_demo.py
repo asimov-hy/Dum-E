@@ -226,7 +226,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--width", type=int, default=None, help="requested source width")
     parser.add_argument("--height", type=int, default=None, help="requested source height")
     parser.add_argument("--device", default="0", help="OpenCV device index or path")
-    parser.add_argument("--model-path", default="data/models/gesture_recognizer.task")
+    parser.add_argument("--model-path", default="data/mediapipe/models/gesture_recognizer.task")
     parser.add_argument("--draw-landmarks", action="store_true")
     parser.add_argument("--draw-finger-state", action="store_true")
     parser.add_argument("--draw-filter-state", action="store_true")

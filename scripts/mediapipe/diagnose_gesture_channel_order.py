@@ -1,4 +1,4 @@
-# scripts/diagnose_gesture_channel_order.py
+# scripts/mediapipe/diagnose_gesture_channel_order.py
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 
 # Allow running from repo root without manually setting PYTHONPATH.
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from perception.gesture import GestureService  # noqa: E402

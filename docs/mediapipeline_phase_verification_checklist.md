@@ -2,7 +2,7 @@
 
 Use this checklist after each implementation phase. Do not begin the next phase until the current phase gate passes.
 
-Canonical plan reference: `docs/mediapipeline/build_plan_v5.md` or equivalent.
+Canonical plan reference: `docs/mediapipeline_build_plan_v5.md` or equivalent.
 
 ## How to use this checklist
 
@@ -172,7 +172,7 @@ Produce valid RGB `Frame` objects from at least one source, with reliable timest
 
 - [ ] `camera/opencv_backend.py`
 - [ ] `camera/realsense_backend.py` if RealSense is supported, with lazy import
-- [ ] `src/dume/integrations/lerobot/camera_adapter.py` if LeRobot integration is supported
+- [ ] `camera/lerobot_adapter.py` if LeRobot integration is supported
 - [ ] `camera/source.py`
 - [ ] `demos/camera_smoke.py`
 - [ ] `tests/test_camera_fake_source.py`
@@ -317,9 +317,9 @@ Integrate MediaPipe Gesture Recognizer in synchronous `VIDEO` mode and recognize
 - [ ] `tests/test_canned_mapper.py`
 - [ ] `tests/test_drop_none_filter.py`
 - [ ] `tests/test_overlay_no_finger_state.py`
-- [ ] `scripts/mediapipe/download_gesture_model.py`
-- [ ] `data/mediapipe/models/gesture_recognizer.task`, or documented local model path
-- [ ] `data/mediapipe/models/gesture_recognizer.task.sha256`, if using checksum file
+- [ ] `scripts/download_gesture_model.py`
+- [ ] `data/models/gesture_recognizer.task`, or documented local model path
+- [ ] `data/models/gesture_recognizer.task.sha256`, if using checksum file
 
 ## Automated checks
 
@@ -815,11 +815,11 @@ Make the prototype reproducible without a live camera and prepare the project fo
 ## Expected files
 
 - [ ] Final `demos/gesture_demo.py`
-- [ ] `scripts/mediapipe/download_gesture_model.py`
+- [ ] `scripts/download_gesture_model.py`
 - [ ] `tests/test_regression_media.py`
-- [ ] `data/mediapipe/regression_media/` or documented external media path
-- [ ] `data/mediapipe/models/gesture_recognizer.task` or documented model artifact path
-- [ ] `data/mediapipe/models/gesture_recognizer.task.sha256`
+- [ ] `data/test_media/` or documented external media path
+- [ ] `data/models/gesture_recognizer.task` or documented model artifact path
+- [ ] `data/models/gesture_recognizer.task.sha256`
 - [ ] Updated `pyproject.toml`
 - [ ] README or docs entry for setup and model download
 
@@ -977,9 +977,7 @@ Do not mark Phase 5 complete if any of these are true:
 Phase 5 passes when:
 
 - [ ] Full automated test suite passes.
-- [ ] Recorded-media regression tests run against required primary clips and
-      pass within accepted thresholds. Documented failures keep Phase 5 at FAIL
-      or PARTIAL PASS.
+- [ ] RRecorded-media regression tests run against required primary clips and pass within accepted thresholds. Documented failures keep Phase 5 at FAIL or PARTIAL PASS.
 - [ ] Final demo works with overlays, logs, and clean shutdown.
 - [ ] Packaging and dependency extras are correct.
 - [ ] Model download/setup is reproducible.

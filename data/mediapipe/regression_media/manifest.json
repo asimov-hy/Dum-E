@@ -469,7 +469,7 @@
   "policy": {
     "phase5_full_pass": "All primary clips with required_for_phase5=true must be present and regression tests must run against them.",
     "ordinary_tests": "Missing media may be skipped in default local/CI runs, which means Phase 5 remains PARTIAL PASS.",
-    "strict_mode": "DUME_REQUIRE_REGRESSION_MEDIA=1 or scripts/check_regression_media.py --strict fails when required_for_phase5 clips are missing.",
+    "strict_mode": "DUME_REQUIRE_REGRESSION_MEDIA=1 or scripts/mediapipe/check_regression_media.py --strict fails when required_for_phase5 clips are missing.",
     "camera_specific": "webcam and realsense_rgb suites are compatibility suites unless required_for_acceptance=true. RealSense RGB is tracked separately because behavior can differ from webcam."
   }
 }

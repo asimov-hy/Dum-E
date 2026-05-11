@@ -16,8 +16,10 @@ from perception.types import GestureServiceConfig, GestureType
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-MANIFEST_PATH = REPO_ROOT / "data" / "test_media" / "manifest.json"
-DEFAULT_MODEL_PATH = REPO_ROOT / "data" / "models" / "gesture_recognizer.task"
+MANIFEST_PATH = REPO_ROOT / "data" / "mediapipe" / "regression_media" / "manifest.json"
+DEFAULT_MODEL_PATH = (
+    REPO_ROOT / "data" / "mediapipe" / "models" / "gesture_recognizer.task"
+)
 TARGET_TYPES = {
     "THUMBS_UP",
     "FIST",
@@ -92,7 +94,7 @@ def test_recorded_media_clip_regression(clip: dict[str, Any]) -> None:
     model_path = Path(os.environ.get("DUME_GESTURE_MODEL", DEFAULT_MODEL_PATH))
     if not model_path.is_file():
         pytest.skip(
-            f"Gesture model missing at {model_path}. Run scripts/download_gesture_model.py."
+            f"Gesture model missing at {model_path}. Run scripts/mediapipe/download_gesture_model.py."
         )
     pytest.importorskip("mediapipe")
 
