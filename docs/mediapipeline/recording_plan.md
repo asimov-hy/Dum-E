@@ -6,6 +6,12 @@ Recorded regression clips make the gesture prototype reproducible without a live
 camera. They let us compare raw labels, geometry, filtering, latency, misses, and
 false positives across camera backends.
 
+Canonical media root: `data/mediapipe/regression_media/`.
+
+Keep MediaPipe regression media separate from:
+- manual/reference inputs under `data/manuals/`
+- future LeRobot datasets or episodes under `data/lerobot/`
+
 ## Suites
 
 - `primary`: required for Phase 5 full PASS. This suite should be recorded in a

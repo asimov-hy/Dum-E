@@ -1,5 +1,10 @@
 # DUM-E MediaPipeline Build Plan v5 (Implementation-Ready)
 
+Repository note: the current organized paths are `docs/mediapipeline/` for
+MediaPipeline docs, `scripts/mediapipe/` for MediaPipe utilities,
+`data/mediapipe/models/` for model artifacts/checksums, and
+`data/mediapipe/regression_media/` for recorded-media manifests and clips.
+
 ## Summary
 
 Build the camera and gesture perception layer for DUM-E. The system recognizes six target static hand gestures plus a NONE rejection class, using a hybrid approach: MediaPipe Gesture Recognizer (VIDEO mode) provides canned gesture labels, while custom landmark geometry provides per-finger state. Both signals are computed in parallel for every detected hand, then a priority mapper produces one of seven gesture classes. Camera input is abstracted from the start (webcam, RealSense, or LeRobot adapter). Operator presence is stubbed with a rich interface.

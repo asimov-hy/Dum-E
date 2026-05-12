@@ -8,10 +8,11 @@ inferring repo state from stale roadmap text.
 the detailed setup, validation, architecture boundaries, current project status,
 and agent rules.
 
-Last updated: 2026-05-07
-Current phase: foundation scaffold plus DUM-E MediaPipeline Phase 5
-infrastructure. Recorded-media clips are still required before Phase 5 can be
-marked PASS.
+Last updated: 2026-05-11
+Current phase: foundation scaffold plus organized feature lanes for
+manual-reading, MediaPipe/MediaPipeline, and LeRobot work. DUM-E MediaPipeline
+Phase 5 infrastructure exists, but recorded-media clips are still required
+before Phase 5 can be marked PASS.
 
 ## Agent Context Rules
 
@@ -35,6 +36,9 @@ marked PASS.
   not restore requirements files unless a verified consumer needs them.
 - Do not add optional extras such as `rag` or `ai` before real code and
   dependencies exist.
+- Treat this file as the canonical RAG entry point. If file organization,
+  architecture boundaries, commands, dependency policy, or validation commands
+  change, update this file in the same pass.
 - Do not re-audit stable facts already documented here unless relevant files
   changed or the user explicitly asks for a fresh audit.
 
@@ -66,11 +70,15 @@ marked PASS.
 | `control/replay.py` | Implemented | Readable replay plans plus execution through an injected `ArmDriver`. |
 | `logging.py` | Implemented | Project logger helper and file logging setup. |
 | `core/` | Implemented | MediaPipeline `Frame`, landmarks, and `FrameSource` contracts. |
-| `camera/` | Implemented | Fake, OpenCV webcam, RealSense-lazy, LeRobot-placeholder, and video-file frame sources. |
+| `camera/` | Implemented | Fake, OpenCV webcam, RealSense-lazy, and video-file frame sources. `backend="lerobot"` lazily delegates to the LeRobot integration placeholder. |
 | `perception/` | Implemented | MediaPipe gesture service, canned + geometry mapper, temporal filters, and mock operator-presence boundary. |
 | `demos/gesture_demo.py` | Implemented | Webcam/RealSense/video demo with landmarks, finger-state, and filter-state debug overlays. |
 | `tests/test_regression_media.py` | Partial | Manifest-driven recorded-media harness exists; required clips are not present yet. |
-| `manual/` | Planned | No package yet; manual parsing interfaces come in a later phase. |
+| `data/manuals/` | Planned data lane | Raw manual/reference images are organized here; no parser package yet. |
+| `docs/manuals/` | Planned docs lane | Future manual-reading design notes belong here. |
+| `scripts/manuals/` | Planned script lane | Future manual-reading utilities belong here. |
+| `src/dume/integrations/lerobot/` | Stub | Optional LeRobot integration boundary; currently a placeholder camera adapter only. |
+| `data/lerobot/` | Planned data lane | Future datasets, episodes, policies, and calibration artifacts belong here. |
 | `autonomy/` | Planned | No package yet; state machine scaffolding comes in a later phase. |
 | `README.md` | Implemented | Current truth plus roadmap; planned commands are not listed as current. |
 
@@ -84,6 +92,8 @@ core/ owns MediaPipeline contracts
 camera/ may import core/
 perception/ may import core/
 camera/ and perception/ do not import each other
+src/dume/integrations/lerobot/ owns optional LeRobot adapters
+planned manual-reading code stays independent from MediaPipe and LeRobot
 planned autonomy/ coordinates control/ and perception outputs later
 ```
 
@@ -92,8 +102,8 @@ Rules:
 - Planned `autonomy/` coordinates runtime flow and passes data between subsystems.
 - `core/`, `camera/`, and `perception/` stay separated by the MediaPipeline
   contracts.
-- Planned `control/` and `manual/` layers must not import from camera/perception
-  directly.
+- `src/dume/control/` owns robot/control/session logic. Future manual-reading
+  code must not import from camera/perception directly.
 - Real hardware/perception/model code enters behind interfaces plus mocks.
 - Avoid provider registries until there are at least two real implementations or
   a concrete config-driven switch.
@@ -107,6 +117,74 @@ MediaPipeline boundary rules:
 - `GestureService` consumes `Frame` objects or core frame-derived data, not
   camera backend objects.
 - `GestureEvent` must not emit `GestureType.NONE`.
+- MediaPipe, manual-reading, and LeRobot work must not directly depend on each
+  other. Share only explicit, narrow interfaces when a real workflow requires
+  it.
+- LeRobot code belongs under `src/dume/integrations/lerobot/`, not a top-level
+  `lerobot/` Python package.
+
+## Repository Organization
+
+Canonical docs:
+
+- `README.md`: concise human-facing overview and setup.
+- `docs/TECHNICAL.md`: canonical RAG/developer guide.
+- `docs/validation/README.md`: validation command index.
+- `docs/repo_organization_audit.md`: cleanup and organization history.
+- `docs/mediapipeline/`: current MediaPipeline plan, status, checklist, and
+  recording plan.
+- `docs/manuals/`: future manual-reading design notes.
+- `docs/mediapipe/`: MediaPipe-specific notes that are not full
+  MediaPipeline phase docs.
+- `docs/lerobot/`: future LeRobot integration notes.
+
+Canonical data lanes:
+
+```text
+data/
+  poses.json
+  motions/
+  manuals/
+    raw/
+    processed/
+    extracted/
+    annotations/
+  mediapipe/
+    models/
+    regression_media/
+    diagnostics/
+  lerobot/
+    datasets/
+    episodes/
+    policies/
+    calibration/
+```
+
+Data lane rules:
+
+- `data/manuals/raw/` holds original manual/reference images. Generated or
+  normalized manual outputs belong under `processed/`, `extracted/`, or
+  `annotations/`.
+- `data/mediapipe/models/gesture_recognizer.task.sha256` is the trackable
+  checksum. `data/mediapipe/models/gesture_recognizer.task` is local/external.
+- `data/mediapipe/regression_media/manifest.json` and its README are
+  trackable. Real clips are added only when recorded honestly.
+- `data/mediapipe/diagnostics/` is for local generated diagnostic outputs.
+- `data/lerobot/` is reserved for future datasets, episodes, policies, and
+  calibration artifacts.
+
+Script lanes:
+
+- `scripts/mediapipe/`: current MediaPipe/MediaPipeline setup, media checking,
+  recording, and diagnostics.
+- `scripts/manuals/`: future manual-reading utilities.
+- `scripts/lerobot/`: future LeRobot utilities.
+
+Legacy note:
+
+- `docs/mediapipeline_phase_verification_checklist.md` remains as a tracked
+  compatibility copy. Prefer `docs/mediapipeline/phase_verification_checklist.md`
+  in new references.
 
 ## Current CLI
 
@@ -299,7 +377,7 @@ Baseline validation:
 
 ```bash
 python -m pytest -q
-python -m ruff check src tests core camera perception demos scripts
+python -m ruff check .
 git diff --check
 ```
 

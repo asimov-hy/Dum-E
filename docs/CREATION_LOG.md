@@ -4,6 +4,42 @@ This log records current development decisions and progress. Historical plans
 that mixed implemented behavior with roadmap items are superseded by the policy
 below.
 
+Current canonical RAG/developer state lives in `docs/TECHNICAL.md`. Historical
+entries below may describe the project at the time they were written.
+
+## 2026-05-11 - Feature-Lane Repository Organization
+
+### Repository Organization
+
+- Organized manual-reading, MediaPipe/MediaPipeline, and LeRobot work into
+  separate data, docs, and script lanes.
+- Moved manual reference images to `data/manuals/raw/`.
+- Moved MediaPipe model checksum and local model artifact path to
+  `data/mediapipe/models/`.
+- Moved regression media manifest and README to
+  `data/mediapipe/regression_media/`.
+- Moved MediaPipe scripts to `scripts/mediapipe/`.
+- Moved MediaPipeline docs to `docs/mediapipeline/`.
+- Added future-lane placeholders under `docs/manuals/`, `docs/mediapipe/`,
+  `docs/lerobot/`, `scripts/manuals/`, and `scripts/lerobot/`.
+
+### Boundary Decision
+
+- Manual-reading, MediaPipe/MediaPipeline, and LeRobot should remain independent
+  until a concrete workflow requires a narrow shared interface.
+- LeRobot integration code belongs under `src/dume/integrations/lerobot/`.
+- `camera/` remains the camera source layer; it lazily delegates
+  `backend="lerobot"` to the LeRobot integration placeholder.
+
+### Validation Status
+
+- `python` was not on PATH in the organizing shell.
+- `python3 -m pytest`: 159 passed, 21 skipped.
+- `python3 -m ruff check .`: passed.
+- `python3 scripts/mediapipe/check_regression_media.py`: passed and reported
+  21 missing clips, including 19 required Phase 5 clips.
+- `git diff --check`: passed.
+
 ## 2026-05-03 - Foundation Scaffold Update
 
 ### Documentation Policy

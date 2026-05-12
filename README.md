@@ -62,6 +62,16 @@ python -m pytest -q
 For full developer, agent, optional dependency, architecture, and validation
 details, see `docs/TECHNICAL.md`.
 
+Documentation map:
+
+- `docs/TECHNICAL.md`: canonical RAG/developer context.
+- `docs/validation/README.md`: validation command index.
+- `docs/mediapipeline/`: MediaPipeline plan, status, checklist, and recording
+  plan.
+- `docs/manuals/`, `docs/mediapipe/`, and `docs/lerobot/`: future feature-lane
+  notes.
+- `docs/repo_organization_audit.md`: repository organization history.
+
 `.venv/` may be used locally for editor, test, or agent execution, but it is not
 the canonical runtime environment.
 
@@ -211,9 +221,13 @@ Rules:
 
 - `core/`, `camera/`, and `perception/` stay separated by the MediaPipeline
   contracts.
-- Planned `control/` and `manual/` layers should not import from camera or
-  perception directly.
+- `src/dume/control/` owns robot/control/session logic. Future manual-reading
+  code should not import from camera or perception directly.
 - Planned `autonomy/` coordinates data flow between layers.
+- Manual-reading, MediaPipe/MediaPipeline, and LeRobot work have separate data,
+  docs, and script lanes. Do not make those domains depend on each other
+  directly.
+- LeRobot integration code belongs under `src/dume/integrations/lerobot/`.
 - New hardware, perception, manual, RAG, or model behavior should start behind a
   small interface plus a mock implementation.
 - Avoid provider registries or factories until there are at least two real

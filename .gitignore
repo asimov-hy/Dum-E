@@ -28,6 +28,10 @@ recordings/
 tmp/
 temp/
 
+# Generated manual-reader outputs
+data/manuals/extracted/*.txt
+!data/manuals/extracted/.gitkeep
+
 # Local model artifacts
 data/mediapipe/models/gesture_recognizer.task
 

@@ -1,6 +1,6 @@
 # DUM-E MediaPipeline Current State
 
-Last updated: 2026-05-07.
+Last updated: 2026-05-11.
 
 ## Phase Status
 
@@ -30,6 +30,23 @@ regression media: 1 passed, 21 skipped
 
 The skipped regression-media cases are skipped because clips are missing or
 marked `present=false` in `data/mediapipe/regression_media/manifest.json`.
+
+## Current Paths
+
+- MediaPipe model checksum:
+  `data/mediapipe/models/gesture_recognizer.task.sha256`
+- Local MediaPipe model artifact:
+  `data/mediapipe/models/gesture_recognizer.task`
+- Regression media manifest:
+  `data/mediapipe/regression_media/manifest.json`
+- MediaPipe scripts: `scripts/mediapipe/`
+- MediaPipeline docs: `docs/mediapipeline/`
+- LeRobot camera adapter placeholder:
+  `src/dume/integrations/lerobot/camera_adapter.py`
+
+Legacy path note: prefer `docs/mediapipeline/phase_verification_checklist.md`
+for the checklist. `docs/mediapipeline_phase_verification_checklist.md` is a
+tracked compatibility copy.
 
 ## Manual Validation
 

@@ -38,4 +38,8 @@ Follow-up work:
 - Consider the `pyrealsense2` color stream instead of `/dev/videoX`.
 - Add thumb-aware geometry.
 - Tune temporal filter thresholds against recorded clips.
-- Tune thresholds.
+- Use `scripts/mediapipe/diagnose_gesture_channel_order.py` for channel-order
+  and raw-label comparison when camera behavior differs.
+- Store recorded clips under `data/mediapipe/regression_media/` and keep
+  MediaPipe diagnostic outputs under `data/mediapipe/diagnostics/`.
+- Track validation status in `docs/mediapipeline/phase_verification_checklist.md`.

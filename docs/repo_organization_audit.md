@@ -663,3 +663,49 @@ Checks run:
 Skipped moves:
 - Generic perception modules were not moved because asset/doc/script
   organization was the priority and the existing imports are stable.
+
+## Stage 7 Follow-Up — RAG And Documentation Refresh
+
+Date: 2026-05-11
+
+Scope:
+- Updated current RAG, technical, validation, and feature-lane documentation to
+  reflect the organized repository layout.
+- Did not change runtime behavior.
+- Did not delete files.
+
+Files updated:
+- `docs/TECHNICAL.md`
+- `README.md`
+- `docs/validation/README.md`
+- `docs/CREATION_LOG.md`
+- `docs/known_issues.md`
+- `docs/manuals/README.md`
+- `docs/mediapipe/README.md`
+- `docs/lerobot/README.md`
+- `data/manuals/README.md`
+- `data/mediapipe/README.md`
+- `data/lerobot/README.md`
+- `scripts/manuals/README.md`
+- `scripts/lerobot/README.md`
+- `src/dume/integrations/lerobot/README.md`
+- `docs/mediapipeline/build_plan_v5.md`
+- `docs/mediapipeline/current_state.md`
+- `docs/mediapipeline/phase_verification_checklist.md`
+- `docs/mediapipeline/recording_plan.md`
+- `docs/mediapipeline_phase_verification_checklist.md`
+
+Documentation result:
+- `docs/TECHNICAL.md` now identifies the feature lanes and is dated
+  2026-05-11.
+- README now includes the documentation map and lane boundary rule.
+- Validation docs now include organization checks and current canonical paths.
+- Feature-lane READMEs now state what belongs in manual-reading, MediaPipe, and
+  LeRobot areas.
+- The legacy `docs/mediapipeline_phase_verification_checklist.md` path is kept
+  as a compatibility copy and points readers to the canonical
+  `docs/mediapipeline/phase_verification_checklist.md`.
+
+Checks run:
+- Stale-reference scans with `rg`.
+- `git diff --check` - pending in this pass until validation completes.
