@@ -8,8 +8,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from manuals.color_detector import parse_region
 from manuals.formatter import format_manual_stage_result
 from manuals.reader import read_manual
+from manuals.visual_debug import has_preview_backend
+from scripts.manuals import read_manual as cli
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,7 +39,7 @@ def test_reader_aggregates_repeated_colors_and_formats_text(
 
     monkeypatch.setattr("manuals.reader.load_image", lambda path: image)
 
-    result = read_manual(tmp_path, stage_id="next")
+    result = read_manual(tmp_path, stage_id="next", mode="visible-blocks")
     counts = {block.color: block.quantity for block in result.blocks}
     output = format_manual_stage_result(result)
 
@@ -61,7 +64,7 @@ def test_reader_ignore_color_removes_color_from_result_and_output(
 
     monkeypatch.setattr("manuals.reader.load_image", lambda path: image)
 
-    result = read_manual(tmp_path, stage_id="next", ignore_colors={"red"})
+    result = read_manual(tmp_path, stage_id="next", mode="visible-blocks", ignore_colors={"red"})
     counts = {block.color: block.quantity for block in result.blocks}
     output = format_manual_stage_result(result)
 
@@ -86,6 +89,7 @@ def test_reader_ignore_hex_removes_manual_background_color(
     result = read_manual(
         tmp_path,
         stage_id="next",
+        mode="visible-blocks",
         ignore_hex_colors={"#f2e6c8"},
         hex_tolerance=0,
     )
@@ -93,6 +97,156 @@ def test_reader_ignore_hex_removes_manual_background_color(
 
     assert counts == {"red": 1}
     assert [region.color for region in result.detected_regions] == ["red"]
+
+
+def test_reader_applies_spatial_regions_before_counting(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    image_path = tmp_path / "next-stage.png"
+    image_path.write_bytes(b"synthetic placeholder")
+
+    image = np.full((80, 120, 3), (0, 255, 255), dtype=np.uint8)
+    image[10:30, 10:30] = (255, 0, 0)
+    image[10:30, 60:80] = (0, 0, 255)
+
+    monkeypatch.setattr("manuals.reader.load_image", lambda path: image)
+
+    result = read_manual(
+        tmp_path,
+        stage_id="next",
+        mode="visible-blocks",
+        include_regions=[parse_region("0,0,100,80")],
+        exclude_regions=[parse_region("5,5,35,35")],
+    )
+    counts = {block.color: block.quantity for block in result.blocks}
+
+    assert counts == {"blue": 1}
+    assert [region.color for region in result.detected_regions] == ["blue"]
+
+
+def test_reader_default_new_pieces_accepts_active_block_without_arrow(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    image_path = tmp_path / "next-stage.png"
+    image_path.write_bytes(b"synthetic placeholder")
+
+    image = np.full((80, 120, 3), (255, 255, 255), dtype=np.uint8)
+    image[10:30, 10:30] = (0, 128, 0)
+
+    monkeypatch.setattr("manuals.reader.load_image", lambda path: image)
+
+    result = read_manual(tmp_path, stage_id="next")
+    counts = {block.color: block.quantity for block in result.blocks}
+
+    assert counts == {"green": 1}
+    assert result.mode == "new-pieces"
+    assert result.status == "ok_no_arrow_detected"
+    assert "no arrows detected" in result.warnings
+
+
+def test_c1_like_page_returns_active_green_components_only(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    image_path = tmp_path / "manual2-c1.png"
+    image_path.write_bytes(b"synthetic placeholder")
+
+    image = _c1_like_image()
+    monkeypatch.setattr("manuals.reader.load_image", lambda path: image)
+
+    result = read_manual(tmp_path, stage_id="next", min_region_area=20)
+    counts = {block.color: block.quantity for block in result.blocks}
+    rejected_roles = {component.role for component in result.rejected_components}
+
+    assert counts == {"green": 2}
+    assert {component.role for component in result.accepted_components} == {"ACTIVE_BLOCK"}
+    assert {"ARROW", "TEXT", "BACKGROUND"}.issubset(rejected_roles)
+
+
+def test_cli_default_run_does_not_create_output_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    input_dir = _manual_input_dir(tmp_path)
+    monkeypatch.setattr("manuals.reader.load_image", lambda path: _c1_like_image())
+    monkeypatch.setattr(sys, "argv", ["read_manual.py", "--input", str(input_dir)])
+
+    assert cli.main() == 0
+    assert not (tmp_path / "extracted").exists()
+    assert not (input_dir / "next_stage.txt").exists()
+
+
+def test_cli_preview_output_writes_only_explicit_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if not has_preview_backend():
+        pytest.skip("OpenCV or Pillow is required for preview generation")
+
+    input_dir = _manual_input_dir(tmp_path)
+    preview_path = tmp_path / "debug" / "manual.png"
+    image = _c1_like_image()
+    monkeypatch.setattr("manuals.reader.load_image", lambda path: image)
+    monkeypatch.setattr("scripts.manuals.read_manual.load_image", lambda path: image)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["read_manual.py", "--input", str(input_dir), "--preview-output", str(preview_path)],
+    )
+
+    assert cli.main() == 0
+    assert preview_path.exists()
+    assert not (tmp_path / "data").exists()
+
+
+def test_cli_output_dir_writes_only_when_provided(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    input_dir = _manual_input_dir(tmp_path)
+    output_dir = tmp_path / "out"
+    monkeypatch.setattr("manuals.reader.load_image", lambda path: _c1_like_image())
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["read_manual.py", "--input", str(input_dir), "--output-dir", str(output_dir)],
+    )
+
+    assert cli.main() == 0
+    assert (output_dir / "next_stage.txt").exists()
+    assert not (tmp_path / "data").exists()
+
+
+def test_cli_clear_output_dir_clears_generated_files_only(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    input_dir = _manual_input_dir(tmp_path)
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    (output_dir / "old_stage.txt").write_text("old", encoding="utf-8")
+    (output_dir / "keep.txt").write_text("keep", encoding="utf-8")
+
+    monkeypatch.setattr("manuals.reader.load_image", lambda path: _c1_like_image())
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "read_manual.py",
+            "--input",
+            str(input_dir),
+            "--output-dir",
+            str(output_dir),
+            "--clear-output-dir",
+        ],
+    )
+
+    assert cli.main() == 0
+    assert not (output_dir / "old_stage.txt").exists()
+    assert (output_dir / "keep.txt").exists()
+    assert (output_dir / "next_stage.txt").exists()
 
 
 def test_reader_handles_empty_input_directory_cleanly(tmp_path: Path) -> None:
@@ -159,3 +313,24 @@ def _imported_modules(path: Path) -> set[str]:
             imports.add(node.module)
 
     return imports
+
+
+def _manual_input_dir(tmp_path: Path) -> Path:
+    input_dir = tmp_path / "raw"
+    input_dir.mkdir()
+    (input_dir / "manual2-c1.png").write_bytes(b"synthetic placeholder")
+    return input_dir
+
+
+def _c1_like_image() -> np.ndarray:
+    image = np.full((140, 180, 3), (255, 255, 255), dtype=np.uint8)
+    image[8:45, 12:18] = (0, 0, 0)
+    image[8:14, 12:38] = (0, 0, 0)
+    image[39:45, 12:38] = (0, 0, 0)
+    image[8:45, 55:61] = (0, 0, 0)
+    image[84:90, 48:68] = (0, 0, 0)
+    image[55:82, 32:82] = (0, 165, 0)
+    image[94:122, 38:88] = (0, 165, 0)
+    image[64:105, 112:116] = (0, 0, 255)
+    image[101:110, 107:121] = (0, 0, 255)
+    return image

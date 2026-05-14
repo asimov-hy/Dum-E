@@ -6,6 +6,8 @@ from manuals.types import ManualStageResult
 def format_manual_stage_result(result: ManualStageResult) -> str:
     lines = [
         f"Stage: {result.stage_id}",
+        f"Mode: {result.mode}",
+        f"Status: {result.status}",
         "Required colored blocks:",
     ]
 

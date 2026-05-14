@@ -50,6 +50,8 @@ data/mediapipe/diagnostics/*
 .agents/
 
 # Editor and OS
+.vscode/settings.json
+.vscode/c_cpp_properties.json
 .vscode/browse.vc.db*
 .vscode/ipch/
 .idea/

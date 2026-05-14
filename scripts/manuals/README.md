@@ -1,7 +1,19 @@
 # Manual Scripts
 
-Future manual-reading utilities belong here.
+`read_manual.py` is the current manual_reader utility script. These scripts are
+checkout utilities, not part of the main `dume` CLI.
 
-No manual-reading scripts exist yet. When they are added, keep them independent
-from MediaPipe and LeRobot scripts unless a concrete workflow requires a narrow
-shared interface.
+Basic command:
+
+```bash
+python scripts/manuals/read_manual.py --input data/manuals/raw --stage next --mode new-pieces
+```
+
+The script prints to the terminal by default. Use `--output-dir` or
+`--preview-output` when a persistent artifact is needed.
+
+Use `--help` to inspect the full argument list when the manual-reader image
+dependencies are installed.
+
+See `docs/manuals/manual_reader.md` for usage notes, visual preview options, and
+current limitations.

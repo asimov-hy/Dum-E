@@ -28,6 +28,9 @@ _OUTLINE_COLORS: dict[str, tuple[int, int, int]] = {
     "gray": (145, 145, 145),
 }
 _IGNORED_COLOR = (120, 120, 120)
+_REJECTED_COLOR = (220, 30, 130)
+_INCLUDE_COLOR = (0, 180, 180)
+_EXCLUDE_COLOR = (255, 90, 0)
 
 
 def save_preview(
@@ -36,15 +39,40 @@ def save_preview(
     output_path: str | Path,
     *,
     ignored_regions: Iterable[DetectedColorRegion] = (),
+    rejected_regions: Iterable[DetectedColorRegion] = (),
+    include_regions: Iterable[tuple[int, int, int, int]] = (),
+    exclude_regions: Iterable[tuple[int, int, int, int]] = (),
 ) -> Path:
     """Save an annotated RGB preview using OpenCV or Pillow if either is installed."""
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
     preview = _ensure_uint8_rgb(image).copy()
-    if _save_with_cv2(preview, list(regions), list(ignored_regions), path):
+    region_list = list(regions)
+    ignored_region_list = list(ignored_regions)
+    rejected_region_list = list(rejected_regions)
+    include_region_list = list(include_regions)
+    exclude_region_list = list(exclude_regions)
+
+    if _save_with_cv2(
+        preview,
+        region_list,
+        ignored_region_list,
+        rejected_region_list,
+        include_region_list,
+        exclude_region_list,
+        path,
+    ):
         return path
-    if _save_with_pil(preview, list(regions), list(ignored_regions), path):
+    if _save_with_pil(
+        preview,
+        region_list,
+        ignored_region_list,
+        rejected_region_list,
+        include_region_list,
+        exclude_region_list,
+        path,
+    ):
         return path
 
     raise PreviewError("Unable to save manual preview image. Install OpenCV or Pillow.")
@@ -109,6 +137,9 @@ def _save_with_cv2(
     image: np.ndarray,
     regions: list[DetectedColorRegion],
     ignored_regions: list[DetectedColorRegion],
+    rejected_regions: list[DetectedColorRegion],
+    include_regions: list[tuple[int, int, int, int]],
+    exclude_regions: list[tuple[int, int, int, int]],
     path: Path,
 ) -> bool:
     try:
@@ -117,10 +148,23 @@ def _save_with_cv2(
         return False
 
     preview = image.copy()
+    for region in rejected_regions:
+        _draw_cv2_region(
+            cv2,
+            preview,
+            region,
+            _REJECTED_COLOR,
+            label=_rejected_label(region),
+            thickness=1,
+        )
+    for bbox in include_regions:
+        _draw_cv2_box(cv2, preview, bbox, _INCLUDE_COLOR, label="include", thickness=2)
+    for bbox in exclude_regions:
+        _draw_cv2_box(cv2, preview, bbox, _EXCLUDE_COLOR, label="exclude", thickness=2)
     for region in ignored_regions:
         _draw_cv2_region(cv2, preview, region, _IGNORED_COLOR, label=f"ignored {region.color}")
     for region in regions:
-        _draw_cv2_region(cv2, preview, region, _color_for(region.color), label=region.color)
+        _draw_cv2_region(cv2, preview, region, _color_for(region.color), label=_accepted_label(region))
     return bool(cv2.imwrite(str(path), cv2.cvtColor(preview, cv2.COLOR_RGB2BGR)))
 
 
@@ -131,9 +175,23 @@ def _draw_cv2_region(
     color: tuple[int, int, int],
     *,
     label: str,
+    thickness: int | None = None,
 ) -> None:
-    x_min, y_min, x_max, y_max = region.bbox
-    thickness = 1 if label.startswith("ignored ") else 2
+    if thickness is None:
+        thickness = 1 if label.startswith("ignored ") else 2
+    _draw_cv2_box(cv2, image, region.bbox, color, label=label, thickness=thickness)
+
+
+def _draw_cv2_box(
+    cv2: object,
+    image: np.ndarray,
+    bbox: tuple[int, int, int, int],
+    color: tuple[int, int, int],
+    *,
+    label: str,
+    thickness: int,
+) -> None:
+    x_min, y_min, x_max, y_max = bbox
     cv2.rectangle(image, (x_min, y_min), (x_max - 1, y_max - 1), color, thickness)
     label_y = max(10, y_min - 4)
     cv2.putText(
@@ -152,6 +210,9 @@ def _save_with_pil(
     image: np.ndarray,
     regions: list[DetectedColorRegion],
     ignored_regions: list[DetectedColorRegion],
+    rejected_regions: list[DetectedColorRegion],
+    include_regions: list[tuple[int, int, int, int]],
+    exclude_regions: list[tuple[int, int, int, int]],
     path: Path,
 ) -> bool:
     try:
@@ -161,10 +222,16 @@ def _save_with_pil(
 
     preview = Image.fromarray(image, mode="RGB")
     draw = ImageDraw.Draw(preview)
+    for region in rejected_regions:
+        _draw_pil_region(draw, region, _REJECTED_COLOR, label=_rejected_label(region), width=1)
+    for bbox in include_regions:
+        _draw_pil_box(draw, bbox, _INCLUDE_COLOR, label="include", width=2)
+    for bbox in exclude_regions:
+        _draw_pil_box(draw, bbox, _EXCLUDE_COLOR, label="exclude", width=2)
     for region in ignored_regions:
         _draw_pil_region(draw, region, _IGNORED_COLOR, label=f"ignored {region.color}", width=1)
     for region in regions:
-        _draw_pil_region(draw, region, _color_for(region.color), label=region.color, width=2)
+        _draw_pil_region(draw, region, _color_for(region.color), label=_accepted_label(region), width=2)
     preview.save(path)
     return True
 
@@ -177,10 +244,32 @@ def _draw_pil_region(
     label: str,
     width: int,
 ) -> None:
-    x_min, y_min, x_max, y_max = region.bbox
+    _draw_pil_box(draw, region.bbox, color, label=label, width=width)
+
+
+def _draw_pil_box(
+    draw: object,
+    bbox: tuple[int, int, int, int],
+    color: tuple[int, int, int],
+    *,
+    label: str,
+    width: int,
+) -> None:
+    x_min, y_min, x_max, y_max = bbox
     draw.rectangle((x_min, y_min, x_max - 1, y_max - 1), outline=color, width=width)
     label_y = max(0, y_min - 12)
     draw.text((x_min, label_y), label, fill=color)
+
+
+def _rejected_label(region: DetectedColorRegion) -> str:
+    role = region.role
+    if region.rejection_reason:
+        return f"{role} {region.color}: {region.rejection_reason}"
+    return f"{role} {region.color}"
+
+
+def _accepted_label(region: DetectedColorRegion) -> str:
+    return f"{region.role} {region.color}"
 
 
 def _color_for(color: str) -> tuple[int, int, int]:

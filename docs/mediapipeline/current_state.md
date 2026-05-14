@@ -46,7 +46,7 @@ marked `present=false` in `data/mediapipe/regression_media/manifest.json`.
 
 Legacy path note: prefer `docs/mediapipeline/phase_verification_checklist.md`
 for the checklist. `docs/mediapipeline_phase_verification_checklist.md` is a
-tracked compatibility copy.
+tracked compatibility pointer.
 
 ## Manual Validation
 

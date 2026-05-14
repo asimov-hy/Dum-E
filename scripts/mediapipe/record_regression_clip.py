@@ -12,7 +12,7 @@ import importlib
 import json
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -159,7 +159,7 @@ def _metadata(args: argparse.Namespace, *, frame_count: int) -> dict[str, object
         "fps": args.fps,
         "frame_count": frame_count,
         "duration_seconds": args.duration_seconds,
-        "created_at": datetime.now(UTC).isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "notes": args.notes,
     }
 

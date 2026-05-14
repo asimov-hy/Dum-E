@@ -3,23 +3,28 @@
 Hanyang University ERICA capstone project.
 
 DUM-E is a utility-first foundation for an automatic tool provider built around an
-SO-101 arm. The current repository focuses on safe configuration, pose storage,
-motion scaffolding, replay planning, and mock-first interfaces that future robot,
-camera, manual, autonomy, and model features can plug into.
+SO-101 arm. The current repository is organized around three human-facing product
+lanes: manual reading, robot movement, and gesture reading.
 
 ## What Works Today
 
-Implemented package:
+Implemented and prototype packages:
 
 - `src/dume/control/`: control-layer utilities for config, calibration metadata,
   motor ID metadata, pose storage, motion storage, replay planning, and mockable
   arm/teleop interfaces.
 - `src/dume/logging.py`: project logger helpers and file logging setup.
+- `manuals/`: manual_reader v0 helpers for extracting best-effort colored block
+  requirements from manual images.
 - `core/`, `camera/`, and `perception/`: DUM-E MediaPipeline contracts, camera
   frame sources, MediaPipe gesture recognition, geometry mapping, temporal
   filters, and a mock operator-presence boundary.
 - `demos/gesture_demo.py`: final gesture demo for webcam, RealSense when
   installed, fake sources, and `video:<path>` recorded media.
+
+Robot movement/control is still mock-first. Replay, teleop, and arm execution
+paths use scaffolded services and mock drivers; the real SO-101/LeRobot hardware
+driver is planned and not implemented yet.
 
 Current CLI commands:
 
@@ -38,6 +43,14 @@ dume --project-root . motions scaffold inspection_cycle --poses home,rack_approa
 dume --project-root . replay pose home
 dume --project-root . replay motion inspection_cycle
 ```
+
+## Where Things Live
+
+| Product lane | Current paths | Status |
+| --- | --- | --- |
+| `manual_reader` | Code: `manuals/`; script: `scripts/manuals/read_manual.py`; docs: `docs/manuals/`; data: `data/manuals/`; tests: `tests/test_manual_reader.py`, `tests/test_manual_color_detector.py` | Prototype-Partial / current v0 |
+| `robot_movement` | Code: `src/dume/control/`; CLI: `src/dume/main.py` / `dume` commands; config: `config/`; data: `data/poses.json`, `data/motions/` | Prototype-Partial; mock/scaffold only; no real SO-101 driver yet |
+| `gesture_reader` | Code: `core/`, `camera/`, `perception/`; demo: `demos/gesture_demo.py`; scripts: `scripts/mediapipe/`; docs: `docs/mediapipeline/`, `docs/mediapipe/`; data: `data/mediapipe/` | Prototype-Partial; Phase 0-4 code/infrastructure exists, Phase 5 recorded media missing |
 
 Documentation rule: no command, package, or feature may appear as current in this
 README unless it exists in the repository. Planned work belongs in the roadmap.
@@ -68,8 +81,10 @@ Documentation map:
 - `docs/validation/README.md`: validation command index.
 - `docs/mediapipeline/`: MediaPipeline plan, status, checklist, and recording
   plan.
-- `docs/manuals/`, `docs/mediapipe/`, and `docs/lerobot/`: future feature-lane
-  notes.
+- `docs/manuals/`: manual_reader lane guide and user docs.
+- `docs/mediapipe/`: MediaPipe-specific notes outside the MediaPipeline phase
+  docs.
+- `docs/lerobot/`: future LeRobot integration notes.
 - `docs/repo_organization_audit.md`: repository organization history.
 
 `.venv/` may be used locally for editor, test, or agent execution, but it is not
@@ -210,20 +225,23 @@ Current dependency direction:
 
 ```text
 control/ owns hardware-adjacent utilities and shared interfaces today
+manuals/ owns manual_reader v0 parsing helpers
 core/ owns MediaPipeline contracts
 camera/ may import core/
 perception/ may import core/
 camera/ and perception/ do not import each other
-planned autonomy/ will coordinate control/, camera/perception outputs, and manual/
+future command flow may coordinate control, gesture, and manual outputs later
 ```
 
 Rules:
 
 - `core/`, `camera/`, and `perception/` stay separated by the MediaPipeline
   contracts.
-- `src/dume/control/` owns robot/control/session logic. Future manual-reading
-  code should not import from camera or perception directly.
-- Planned `autonomy/` coordinates data flow between layers.
+- `manuals/` owns the current manual_reader v0 code and stays independent from
+  MediaPipe, LeRobot, camera, and perception unless a narrow interface is added
+  later.
+- `src/dume/control/` owns robot/control/session logic and currently uses mock
+  drivers/scaffolded replay and teleop paths.
 - Manual-reading, MediaPipe/MediaPipeline, and LeRobot work have separate data,
   docs, and script lanes. Do not make those domains depend on each other
   directly.
@@ -282,15 +300,14 @@ Near-term:
 
 - Record the MediaPipeline regression clips declared in `data/mediapipe/regression_media/manifest.json`.
 - Complete manual webcam validation for Phase 3 and Phase 4 gestures/filters.
-- Add manual and autonomy packages only when their first scoped interfaces/tests
-  are part of the same change.
+- Strengthen manual_reader real-image ground-truth validation.
 - Add new optional extras only when corresponding code needs them.
 - Keep all hardware-facing code testable without the robot attached.
 
 Later possibilities:
 
 - RealSense D435 validation and workspace perception.
-- Manual image parsing for LEGO brick color sequence extraction.
+- Manual image parsing hardening for LEGO brick color sequence extraction.
 - Integration of MediaPipeline gesture events into a future command flow after
   acceptance criteria are met.
 - Real SO-101/LeRobot arm driver.

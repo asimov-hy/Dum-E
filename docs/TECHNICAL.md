@@ -8,15 +8,16 @@ inferring repo state from stale roadmap text.
 the detailed setup, validation, architecture boundaries, current project status,
 and agent rules.
 
-Last updated: 2026-05-11
-Current phase: foundation scaffold plus organized feature lanes for
-manual-reading, MediaPipe/MediaPipeline, and LeRobot work. DUM-E MediaPipeline
-Phase 5 infrastructure exists, but recorded-media clips are still required
-before Phase 5 can be marked PASS.
+Last updated: 2026-05-13
+Current phase: foundation scaffold plus three active prototype product lanes:
+manual_reader, robot_movement, and gesture_reader. DUM-E MediaPipeline Phase 5
+infrastructure exists, but recorded-media clips are still required before Phase
+5 can be marked PASS.
 
 ## Agent Context Rules
 
-- Label every subsystem as `Implemented`, `Stub`, or `Planned`.
+- Label every subsystem as `Implemented`, `Stub`, `Prototype-Partial`, or
+  `Planned`.
 - README may list a command or package as current only if it exists in code.
 - Update this document in the same change as interface, command, config, or
   architecture changes.
@@ -69,14 +70,15 @@ before Phase 5 can be marked PASS.
 | `control/teleop.py` | Stub | `TeleopDriver`, `MockTeleopDriver`, and CLI status text; live input planned. |
 | `control/replay.py` | Implemented | Readable replay plans plus execution through an injected `ArmDriver`. |
 | `logging.py` | Implemented | Project logger helper and file logging setup. |
+| `manuals/` | Prototype-Partial / current v0 | Manual reader helpers for best-effort colored block extraction from manual images. Independent from MediaPipe, LeRobot, camera, and perception. |
 | `core/` | Implemented | MediaPipeline `Frame`, landmarks, and `FrameSource` contracts. |
 | `camera/` | Implemented | Fake, OpenCV webcam, RealSense-lazy, and video-file frame sources. `backend="lerobot"` lazily delegates to the LeRobot integration placeholder. |
 | `perception/` | Implemented | MediaPipe gesture service, canned + geometry mapper, temporal filters, and mock operator-presence boundary. |
 | `demos/gesture_demo.py` | Implemented | Webcam/RealSense/video demo with landmarks, finger-state, and filter-state debug overlays. |
 | `tests/test_regression_media.py` | Partial | Manifest-driven recorded-media harness exists; required clips are not present yet. |
-| `data/manuals/` | Planned data lane | Raw manual/reference images are organized here; no parser package yet. |
-| `docs/manuals/` | Planned docs lane | Future manual-reading design notes belong here. |
-| `scripts/manuals/` | Planned script lane | Future manual-reading utilities belong here. |
+| `data/manuals/` | Prototype data lane | Raw manual/reference images exist under `data/manuals/raw/`; generated manual-reader text outputs are local by default. |
+| `docs/manuals/` | Implemented docs lane | Current manual_reader lane index and `manual_reader.md` user guide live here. |
+| `scripts/manuals/` | Implemented utility lane | `read_manual.py` exists for manual_reader v0 checkout/script workflows. |
 | `src/dume/integrations/lerobot/` | Stub | Optional LeRobot integration boundary; currently a placeholder camera adapter only. |
 | `data/lerobot/` | Planned data lane | Future datasets, episodes, policies, and calibration artifacts belong here. |
 | `autonomy/` | Planned | No package yet; state machine scaffolding comes in a later phase. |
@@ -88,22 +90,25 @@ Layer direction:
 
 ```text
 control/ is implemented today
+manuals/ owns manual_reader v0 parsing helpers
 core/ owns MediaPipeline contracts
 camera/ may import core/
 perception/ may import core/
 camera/ and perception/ do not import each other
 src/dume/integrations/lerobot/ owns optional LeRobot adapters
-planned manual-reading code stays independent from MediaPipe and LeRobot
-planned autonomy/ coordinates control/ and perception outputs later
+future command flow may coordinate control, gesture, and manual outputs later
 ```
 
 Rules:
 
-- Planned `autonomy/` coordinates runtime flow and passes data between subsystems.
 - `core/`, `camera/`, and `perception/` stay separated by the MediaPipeline
   contracts.
-- `src/dume/control/` owns robot/control/session logic. Future manual-reading
-  code must not import from camera/perception directly.
+- `manuals/` is the current manual-reading code location. It should remain
+  independent from MediaPipe, LeRobot, camera, and perception unless a future
+  narrow interface is explicitly added for a real workflow.
+- `src/dume/control/` owns robot/control/session logic. It currently uses mock
+  drivers and scaffolded replay/teleop paths; a real SO-101/LeRobot driver is
+  planned.
 - Real hardware/perception/model code enters behind interfaces plus mocks.
 - Avoid provider registries until there are at least two real implementations or
   a concrete config-driven switch.
@@ -125,6 +130,21 @@ MediaPipeline boundary rules:
 
 ## Repository Organization
 
+Three-function map:
+
+| Product lane | Current paths | Status |
+| --- | --- | --- |
+| `manual_reader` | Code: `manuals/`; script: `scripts/manuals/read_manual.py`; docs: `docs/manuals/`; data: `data/manuals/`; tests: `tests/test_manual_reader.py`, `tests/test_manual_color_detector.py` | Prototype-Partial / current v0 |
+| `robot_movement` | Code: `src/dume/control/`; CLI: `src/dume/main.py` / `dume` commands; config: `config/`; data: `data/poses.json`, `data/motions/` | Prototype-Partial; mock/scaffold only; no real SO-101 driver yet |
+| `gesture_reader` | Code: `core/`, `camera/`, `perception/`; demo: `demos/gesture_demo.py`; scripts: `scripts/mediapipe/`; docs: `docs/mediapipeline/`, `docs/mediapipe/`; data: `data/mediapipe/` | Prototype-Partial; Phase 0-4 code/infrastructure exists, Phase 5 recorded media missing |
+
+Packaging truth:
+
+Only `src/dume` is packaged by `pyproject.toml` today. `manuals/`, `core/`,
+`camera/`, and `perception/` are active repo-root packages used in
+checkout/test/script workflows through repo-root Python path. Moving them under
+`src/dume` is deferred to a separate import-refactor pass.
+
 Canonical docs:
 
 - `README.md`: concise human-facing overview and setup.
@@ -133,7 +153,7 @@ Canonical docs:
 - `docs/repo_organization_audit.md`: cleanup and organization history.
 - `docs/mediapipeline/`: current MediaPipeline plan, status, checklist, and
   recording plan.
-- `docs/manuals/`: future manual-reading design notes.
+- `docs/manuals/`: current manual_reader lane index and user guide.
 - `docs/mediapipe/`: MediaPipe-specific notes that are not full
   MediaPipeline phase docs.
 - `docs/lerobot/`: future LeRobot integration notes.
@@ -177,14 +197,15 @@ Script lanes:
 
 - `scripts/mediapipe/`: current MediaPipe/MediaPipeline setup, media checking,
   recording, and diagnostics.
-- `scripts/manuals/`: future manual-reading utilities.
+- `scripts/manuals/`: current manual_reader utilities, including
+  `read_manual.py`.
 - `scripts/lerobot/`: future LeRobot utilities.
 
 Legacy note:
 
 - `docs/mediapipeline_phase_verification_checklist.md` remains as a tracked
-  compatibility copy. Prefer `docs/mediapipeline/phase_verification_checklist.md`
-  in new references.
+  compatibility pointer only. Prefer
+  `docs/mediapipeline/phase_verification_checklist.md` in new references.
 
 ## Current CLI
 
@@ -342,6 +363,12 @@ Future optional extras should be added only when their code requires them. RAG o
 model-provider support remains a roadmap possibility and has no package or
 dependency group yet.
 
+Manual reader dependency truth: `manuals/` imports `numpy` for RGB array and
+color-region processing. Image loading tries OpenCV first and Pillow second when
+those libraries are already installed. `pyproject.toml` currently declares
+`numpy` in the `dev`, `camera`, and `perception` extras, and OpenCV in the
+`camera` and `perception` extras; Pillow is not declared as a project dependency.
+
 ## Clean Machine Setup
 
 Canonical conda runtime setup:
@@ -397,6 +424,14 @@ camera. Clip executions are skipped until the files declared in
 Strict regression media checks are expected to fail while required Phase 5
 primary clips are missing.
 
+Manual reader checks:
+
+```bash
+python scripts/manuals/read_manual.py --help
+python scripts/manuals/read_manual.py --input data/manuals/raw --stage next
+python -m pytest -q tests/test_manual_reader.py tests/test_manual_color_detector.py
+```
+
 Current MediaPipeline state and camera-dependent TODOs are tracked in:
 
 - `docs/mediapipeline/current_state.md`
@@ -435,6 +470,8 @@ Near-term:
 - Keep README and this document synchronized with code.
 - Maintain tests around mock interfaces, replay execution, workspace config,
   README command truthfulness, and MediaPipeline boundaries.
+- Strengthen manual_reader validation against real images with ground-truth
+  expected counts.
 - Replace stubs with concrete implementations one package at a time.
 
 Planned later:
@@ -442,7 +479,7 @@ Planned later:
 - Real SO-101/LeRobot driver.
 - RealSense D435 validation and integration hardening.
 - Workspace perception for bin colors and loadout occupancy.
-- Manual image parsing for color sequences.
+- Manual reader hardening for color sequences.
 - Integration of MediaPipeline gesture events into a future command flow after
   acceptance criteria are met.
 - Possible RAG/model providers once the interface requirements are known.
@@ -459,3 +496,4 @@ Planned later:
 | 2026-05-03 | Workspace config lands before camera/manual/autonomy work | It is shared infrastructure for later packages. |
 | 2026-05-03 | No premature `rag` or `ai` extras | Future model support is possible but not designed yet. |
 | 2026-05-07 | Conda is the canonical runtime; `.venv/` is local-only | Keeps full-program runtime reproducible while allowing editor/test/agent convenience environments. |
+| 2026-05-13 | Cleanup documents current product lanes without moving packages | Manual reader v0, mock robot movement, and gesture reader infrastructure exist, but an import-refactor pass is intentionally deferred. |

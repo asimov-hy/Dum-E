@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
 
-from manuals.color_detector import detect_color_regions
-from manuals.types import BlockRequirement, DetectedColorRegion, ManualStageResult
+from manuals.color_detector import RegionSpec, classify_color_components
+from manuals.types import BlockRequirement, DetectedColorRegion, ManualStageResult, ReaderMode
 
 
 IMAGE_EXTENSIONS = {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
@@ -20,9 +21,16 @@ def read_manual(
     input_dir: str | Path,
     *,
     stage_id: str = "next",
+    mode: ReaderMode = "new-pieces",
     ignore_colors: set[str] | None = None,
     ignore_hex_colors: set[str] | None = None,
     hex_tolerance: int = 25,
+    include_regions: Sequence[RegionSpec] | None = None,
+    exclude_regions: Sequence[RegionSpec] | None = None,
+    min_region_area: int = 100,
+    max_region_area: int | None = None,
+    reject_thin_components: bool = False,
+    reject_edge_touching: bool = False,
 ) -> ManualStageResult:
     directory = Path(input_dir)
     notes: list[str] = []
@@ -53,19 +61,32 @@ def read_manual(
     totals: dict[str, int] = defaultdict(int)
     confidences: dict[str, list[float]] = defaultdict(list)
     source_images: list[str] = []
-    detected_regions: list[DetectedColorRegion] = []
+    accepted_components: list[DetectedColorRegion] = []
+    rejected_components: list[DetectedColorRegion] = []
+    warnings: list[str] = []
+    statuses: list[str] = []
 
     for image_path in selected_paths:
         image = load_image(image_path)
         source_images.append(str(image_path))
-        regions = detect_color_regions(
+        debug_result = classify_color_components(
             image,
             ignore_colors=ignore_colors,
             ignore_hex_colors=ignore_hex_colors,
             hex_tolerance=hex_tolerance,
+            include_regions=include_regions,
+            exclude_regions=exclude_regions,
+            min_region_area=min_region_area,
+            max_region_area=max_region_area,
+            reject_thin_components=reject_thin_components,
+            reject_edge_touching=reject_edge_touching,
+            mode=mode,
         )
-        detected_regions.extend(regions)
-        for region in regions:
+        accepted_components.extend(debug_result.regions)
+        rejected_components.extend(debug_result.rejected_regions)
+        warnings.extend(debug_result.warnings or [])
+        statuses.append(debug_result.status)
+        for region in debug_result.regions:
             totals[region.color] += 1
             if region.confidence is not None:
                 confidences[region.color].append(region.confidence)
@@ -79,17 +100,25 @@ def read_manual(
         for color, quantity in sorted(totals.items())
     ]
 
+    status = _combined_status(statuses)
     if blocks:
-        notes.append("Counts are best-effort estimates from color regions.")
+        notes.append("Counts are best-effort estimates from classified active block regions.")
     else:
-        notes.append("No colored block regions were detected.")
+        notes.append("No active block regions were detected.")
+    notes.extend(warnings)
 
     return ManualStageResult(
         stage_id=stage_id,
         blocks=blocks,
         source_images=source_images,
         notes=notes,
-        detected_regions=detected_regions,
+        detected_regions=accepted_components,
+        page_filename=Path(source_images[0]).name if source_images else None,
+        mode=mode,
+        status=status,
+        accepted_components=accepted_components,
+        rejected_components=rejected_components,
+        warnings=warnings,
     )
 
 
@@ -151,3 +180,11 @@ def _average(values: list[float]) -> float | None:
     if not values:
         return None
     return sum(values) / len(values)
+
+
+def _combined_status(statuses: list[str]) -> str:
+    if not statuses:
+        return "no image selected"
+    if any(status != "ok" for status in statuses):
+        return statuses[0]
+    return "ok"

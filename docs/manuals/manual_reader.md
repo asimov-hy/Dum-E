@@ -1,7 +1,8 @@
 # Manual Reader
 
-The manual reader is a standalone version 0 subsystem for extracting colored
-block requirements from manual images as plain text.
+The manual reader is a standalone version 0 subsystem for extracting current
+step LEGO block color requirements from manual images as plain text and a
+structured result.
 
 ## Input
 
@@ -16,17 +17,12 @@ first available image by filename.
 
 ## Output
 
-Extracted text is written to:
+By default the CLI prints to the terminal only. It does not write extracted text,
+previews, or cached readings unless an output path is provided.
 
-```text
-data/manuals/extracted/
-```
-
-The default `next` stage output path is:
-
-```text
-data/manuals/extracted/next_stage.txt
-```
+Use `--output-dir PATH` to write extracted text. Use `--clear-output-dir` with
+`--output-dir` to remove prior generated manual-reader outputs in that directory
+before writing.
 
 ## CLI Usage
 
@@ -34,65 +30,63 @@ data/manuals/extracted/next_stage.txt
 python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next
 ```
 
-To save and open an annotated visual debug preview:
+Default mode is `--mode new-pieces`, which counts only components classified as
+`ACTIVE_BLOCK`. If no arrow/new-piece indicator is detected, the reader returns
+status `no new-piece indicator detected` instead of counting the whole page.
+
+For a debug/fallback pass that counts visible block-like components after
+rejecting text, arrows, and background:
 
 ```bash
-python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next --show
+python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next --mode visible-blocks
 ```
 
-To hide colors from the detected counts while marking them differently in the
-preview:
+To save an annotated visual debug preview:
 
 ```bash
-python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next --show --ignore-color black --ignore-color white --ignore-color gray
+python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next --preview-output /tmp/manual_debug.png
 ```
 
-To ignore specific manual/background RGB colors before region detection:
+To print component classifications:
 
 ```bash
-python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next --show --ignore-hex "#ffffff" --ignore-hex "#111111" --hex-tolerance 30
+python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next --debug-components
 ```
 
 Example output:
 
 ```text
 Stage: next
+Mode: new-pieces
+Status: ok
 Required colored blocks:
-- red: 2
-- blue: 1
-- yellow: 4
+- green: 2
 ```
 
 ## Visual Debugging
 
-`--show` writes an annotated preview image to:
+Use `--preview-output PATH` to write a preview. `--show` also writes a preview,
+using a temporary `/tmp/manual_reader_*.png` path when no explicit path is
+provided, then attempts to open it with the system viewer.
 
-```text
-data/manuals/extracted/next_stage_preview.png
-```
-
-Use `--preview-output PATH` to choose a different path. The preview outlines
-detected colored regions and labels them when the available image backend can
-draw text. Ignored colors are excluded from text output and counts; known
-ignored colors are marked differently in the preview.
-
-Use `--ignore-hex HEX` for manual-specific colors such as page backgrounds,
-printed graphics, outlines, or non-block artwork. It can be repeated. The
-`--hex-tolerance N` option controls RGB distance matching and defaults to `25`;
-larger values remove colors close to the supplied hex value.
+The preview labels accepted `ACTIVE_BLOCK` boxes and rejected `ARROW`, `TEXT`,
+`DIMMED_OLD_BLOCK`, `BACKGROUND`, and `UNKNOWN` boxes with rejection reasons.
+This is intended for classical-CV tuning, not for persistent cache storage.
 
 If the system image viewer cannot be opened, the CLI prints the preview path
 instead of crashing.
 
 ## Current Limits
 
-- Output is text-only unless `--show` is passed.
+- Default output is terminal-only unless `--output-dir`, `--preview-output`, or
+  `--show` is passed.
 - The reader is not connected to robot control.
 - The reader does not import LeRobot, MediaPipe, or `src/dume/control`.
 - Image loading and preview writing use OpenCV or Pillow only if one is already
   installed.
-- Core color detection operates on RGB numpy arrays.
-- Counts are best-effort estimates from colored image regions.
+- Core detection uses classical component classification over RGB/HSV/gray numpy
+  arrays. It does not use OCR, CNNs, transformers, SAM, YOLO, or MediaPipe.
+- Counts are best-effort estimates from components classified as active blocks.
 
 ## Manual Validation
 
@@ -103,13 +97,19 @@ To verify real manual images, place representative photos or scans in
 python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next
 ```
 
-Inspect `data/manuals/extracted/next_stage.txt` and compare the reported block
-colors and counts against the source image. Keep generated `.txt` outputs local;
-commit only source images, docs, or code that are intentionally part of the
-project.
+For visual inspection:
+
+```bash
+python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next --mode new-pieces --debug-components --preview-output /tmp/manual_debug.png
+```
+
+Compare terminal output and the preview against the source image. Keep generated
+`.txt` and preview outputs local; commit only source images, docs, or code that
+are intentionally part of the project.
 
 ## Future Path
 
-The reader returns a structured `ManualStageResult` internally. A future robot
-handoff can consume that type through a narrow interface after the manual-reading
-workflow is validated.
+The reader returns a structured `ManualStageResult` internally with page
+filename, mode, status, color counts, accepted components, rejected components,
+and warnings. A future page loop, gesture confirmation, or robot handoff can
+consume that type through a narrow interface after validation.

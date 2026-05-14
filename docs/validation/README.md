@@ -11,7 +11,7 @@ of replacing them.
 - `docs/mediapipeline/current_state.md`: current MediaPipeline status.
 - `docs/mediapipeline/recording_plan.md`: how to record required clips.
 - `docs/mediapipeline/phase_verification_checklist.md`: phase checklist.
-- `docs/manuals/README.md`: future manual-reading notes.
+- `docs/manuals/README.md`: current manual_reader lane index.
 - `docs/mediapipe/README.md`: MediaPipe-specific notes outside the phase docs.
 - `docs/lerobot/README.md`: future LeRobot integration notes.
 - `data/mediapipe/regression_media/README.md`: regression-media directory instructions.
@@ -42,6 +42,12 @@ Strict media validation is expected to fail while required primary clips are
 missing. That failure keeps Phase 5 at PARTIAL PASS and must not be hidden with
 fake media or changed manifest truth.
 
+`python scripts/mediapipe/check_regression_media.py` should pass in non-strict
+mode while reporting missing clips.
+`python scripts/mediapipe/check_regression_media.py --strict` is expected to
+fail until the required clips are recorded. `tests/test_regression_media.py` may
+skip missing clips unless strict environment flags require them.
+
 The gesture model binary is a local/external artifact. Track
 `data/mediapipe/models/gesture_recognizer.task.sha256` and use
 `python scripts/mediapipe/download_gesture_model.py` to recreate or verify
@@ -59,6 +65,19 @@ Capture plan:
 Phase checklist:
 
 - `docs/mediapipeline/phase_verification_checklist.md`
+
+## Manual Reader Validation
+
+```bash
+python scripts/manuals/read_manual.py --help
+python scripts/manuals/read_manual.py --input data/manuals/raw --stage next --mode new-pieces --debug-components --preview-output /tmp/manual_debug.png
+python scripts/manuals/read_manual.py --input data/manuals/raw --stage next --mode visible-blocks --debug-components --preview-output /tmp/manual_visible_debug.png
+python -m pytest -q tests/test_manual_reader.py tests/test_manual_color_detector.py
+python -m ruff check .
+```
+
+The reader is Prototype-Partial. Passing these checks does not replace
+real-image ground-truth validation of detected colors and counts.
 
 ## Diagnostic Scripts
 

@@ -1,14 +1,15 @@
-# Manual Reading Notes
+# Manual Reader Lane
 
-Design notes and validation plans for future manual-reading work belong here.
+Status: manual_reader v0 / Prototype-Partial.
 
-Current status:
-- No manual-reading package or runtime parser exists yet.
-- Manual/reference source images live in `data/manuals/raw/`.
-- Future processed outputs should stay under `data/manuals/processed/`,
-  `data/manuals/extracted/`, or `data/manuals/annotations/`.
-- Future utilities belong in `scripts/manuals/`.
+- Code path: `manuals/`
+- CLI/script: `scripts/manuals/read_manual.py`
+- User guide: `docs/manuals/manual_reader.md`
+- Data: `data/manuals/raw/`
+- Tests: `tests/test_manual_reader.py` and `tests/test_manual_color_detector.py`
 
-Boundary rule:
-- Manual-reading work must not directly depend on MediaPipe or LeRobot code.
-  Add a narrow shared interface only when a concrete workflow requires it.
+Boundary rule: manual_reader must stay independent from MediaPipe, LeRobot,
+camera, and perception unless a future narrow interface is explicitly added.
+
+Known limitation: the current reader needs stronger real-image ground-truth
+validation before its color/count output should be treated as reliable.

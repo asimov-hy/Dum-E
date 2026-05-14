@@ -4,7 +4,7 @@ Use this checklist after each implementation phase. Do not begin the next phase 
 
 Canonical path: `docs/mediapipeline/phase_verification_checklist.md`.
 The legacy `docs/mediapipeline_phase_verification_checklist.md` file is kept as
-a compatibility copy only.
+a compatibility pointer only.
 
 Canonical plan reference: `docs/mediapipeline/build_plan_v5.md` or equivalent.
 
