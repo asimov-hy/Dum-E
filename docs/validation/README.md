@@ -96,10 +96,17 @@ python scripts/manuals/read_manual.py \
 
 The reader is Prototype-Partial. Current smoke expectations are C1 JPEG green
 only, and C3 JPEG green plus red while rejecting pale/light-blue old blocks.
-Passing these checks does not solve clean PNG/manual accuracy: those images can
-still over-count studs, faces, or components. Treat current counts as
-best-effort diagnostics. Clean PNG accuracy is not accepted yet until component
-grouping and color-set output are fixed.
+For clean PNG validation in `data/manuals/raw3`, the primary target is the
+active color set:
+
+- C1: green.
+- C2: green.
+- C3: green and white.
+- C4: green, white, and yellow.
+- C5: green, white, and yellow.
+
+Treat component counts as best-effort diagnostics only; they can over-count
+studs, faces, and highlights.
 
 ## Diagnostic Scripts
 

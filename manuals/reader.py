@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from manuals.color_detector import RegionSpec, classify_color_components
+from manuals.color_detector import RegionSpec, active_color_set, classify_color_components
 from manuals.types import BlockRequirement, DetectedColorRegion, ManualStageResult, ReaderMode
 
 
@@ -91,25 +91,33 @@ def read_manual(
             if region.confidence is not None:
                 confidences[region.color].append(region.confidence)
 
+    if mode == "new-pieces":
+        active_colors = active_color_set(accepted_components, rejected_components)
+    else:
+        active_colors = sorted(totals)
+
     blocks = [
         BlockRequirement(
             color=color,
-            quantity=quantity,
+            quantity=totals[color] if color in totals else None,
             confidence=_average(confidences[color]),
         )
-        for color, quantity in sorted(totals.items())
+        for color in active_colors
     ]
 
     status = _combined_status(statuses)
-    if blocks:
-        notes.append("Counts are best-effort estimates from classified active block regions.")
+    if mode == "new-pieces" and not active_colors and status == "ok_no_arrow_detected":
+        status = "no_new_piece_indicator"
+    if active_colors:
+        notes.append("Active colors are inferred from classified active block regions.")
     else:
-        notes.append("No active block regions were detected.")
+        notes.append("No active colors were detected.")
     notes.extend(warnings)
 
     return ManualStageResult(
         stage_id=stage_id,
         blocks=blocks,
+        active_colors=active_colors,
         source_images=source_images,
         notes=notes,
         detected_regions=accepted_components,

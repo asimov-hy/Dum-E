@@ -95,7 +95,10 @@ Example output:
 Stage: next
 Mode: new-pieces
 Status: ok
-Required colored blocks:
+Required active colors:
+- green
+
+Component counts:
 - green: 2
 ```
 
@@ -121,14 +124,13 @@ generated text outputs.
   installed.
 - Core detection uses classical component classification over RGB/HSV/gray numpy
   arrays. It does not use OCR, CNNs, transformers, SAM, YOLO, or MediaPipe.
-- Counts are best-effort component counts from roles classified as active blocks,
-  not reliable LEGO brick quantities.
-- Clean PNG/manual images are currently too sensitive and can over-count studs,
-  faces, or components through over-segmentation, for example high counts such
-  as `green: 46`.
-- The next accuracy pass should add active color-set output/color presence and
-  better component grouping. Arrow rejection should continue improving, but raw
-  component counts should not be treated as final brick counts yet.
+- Required active colors are the primary `new-pieces` output.
+- Component counts are secondary diagnostics from active-looking components.
+  They are not reliable LEGO brick quantities because clean manual images can
+  over-segment studs, faces, and highlights.
+- The reader aggregates the active color set after component role
+  classification, with extra rejection for arrow fragments, dimmed old assembly
+  colors, and page/background-like white regions.
 
 ## Manual Validation
 
@@ -157,17 +159,21 @@ Compare terminal output and the preview against the source image. Keep generated
 `.txt` and preview outputs local; commit only source images, docs, or code that
 are intentionally part of the project.
 
-Smoke target truth:
+Smoke target truth for `data/manuals/raw3` clean PNGs:
 
-- C1 JPEG: green only.
-- C3 JPEG: green and red, with pale/light-blue old blocks rejected.
+- C1: green.
+- C2: green.
+- C3: green and white.
+- C4: green, white, and yellow.
+- C5: green, white, and yellow.
 
 ## Future Path
 
 The reader returns a structured `ManualStageResult` internally with page
-filename, mode, status, color counts, accepted components, rejected components,
-and warnings. The final goal is to read a manual page and output the active/new
-block colors needed for that step. After validation, that output can feed:
+filename, mode, status, active colors, diagnostic color counts, accepted
+components, rejected components, and warnings. The final goal is to read a
+manual page and output the active/new block colors needed for that step. After
+validation, that output can feed:
 
 ```text
 manual page loop -> gesture confirmation -> robot/LeRobot tool-provider handoff

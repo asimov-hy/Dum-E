@@ -47,7 +47,9 @@ def test_reader_aggregates_repeated_colors_and_formats_text(
     assert counts["blue"] == 1
     assert counts["yellow"] == 1
     assert "Stage: next" in output
-    assert "Required colored blocks:" in output
+    assert "Required active colors:" in output
+    assert "- red" in output
+    assert "Component counts:" in output
     assert "- red: 2" in output
 
 
@@ -161,8 +163,28 @@ def test_c1_like_page_returns_active_green_components_only(
     rejected_roles = {component.role for component in result.rejected_components}
 
     assert counts == {"green": 2}
+    assert result.active_colors == ["green"]
     assert {component.role for component in result.accepted_components} == {"ACTIVE_BLOCK"}
     assert {"ARROW", "TEXT", "BACKGROUND"}.issubset(rejected_roles)
+
+
+def test_raw3_pages_report_expected_active_color_sets() -> None:
+    pytest.importorskip("PIL.Image")
+    input_dir = ROOT / "data" / "manuals" / "raw3"
+    if not input_dir.exists():
+        pytest.skip("raw3 manual fixtures are not available")
+
+    expected_colors = {
+        "c1": {"green"},
+        "c2": {"green"},
+        "c3": {"green", "white"},
+        "c4": {"green", "white", "yellow"},
+        "c5": {"green", "white", "yellow"},
+    }
+
+    for stage_id, colors in expected_colors.items():
+        result = read_manual(input_dir, stage_id=stage_id)
+        assert set(result.active_colors) == colors
 
 
 def test_cli_default_run_does_not_create_output_files(

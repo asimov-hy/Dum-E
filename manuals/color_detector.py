@@ -66,6 +66,16 @@ class ColorDetectionDebugResult:
     warnings: list[str] | None = None
 
 
+@dataclass(frozen=True)
+class _ColorSetSummary:
+    color: str
+    component_count: int
+    total_area: int
+    compact_count: int
+    mean_saturation: float
+    mean_value: float
+
+
 def parse_region(value: str, *, normalized: bool = False) -> RegionSpec:
     parts = [part.strip() for part in value.split(",")]
     if len(parts) != 4:
@@ -358,6 +368,166 @@ def classify_color_components(
         status=status,
         warnings=warnings,
     )
+
+
+def active_color_set(
+    accepted_regions: Sequence[DetectedColorRegion],
+    rejected_regions: Sequence[DetectedColorRegion] = (),
+) -> list[str]:
+    """Aggregate classified components into the required active color set."""
+    summaries = _color_set_summaries(accepted_regions)
+    if not summaries:
+        return []
+
+    colors = set(summaries)
+    max_color_area = max(summary.total_area for summary in summaries.values())
+
+    for color, summary in summaries.items():
+        if _is_minor_artifact_color(color, summary, max_color_area, rejected_regions):
+            colors.discard(color)
+        elif _is_dimmed_blue_leak(color, summary, rejected_regions):
+            colors.discard(color)
+
+    if "yellow" in colors:
+        yellow_area = summaries["yellow"].total_area
+        for warm_color in ("orange", "red"):
+            summary = summaries.get(warm_color)
+            if summary is not None and summary.total_area < max(300, yellow_area * 0.04):
+                colors.discard(warm_color)
+
+    if "white" in colors and not _has_active_white_evidence(accepted_regions, summaries["white"]):
+        colors.discard("white")
+
+    return sorted(colors)
+
+
+def _color_set_summaries(
+    regions: Sequence[DetectedColorRegion],
+) -> dict[str, _ColorSetSummary]:
+    grouped: dict[str, list[DetectedColorRegion]] = {}
+    for region in regions:
+        grouped.setdefault(region.color, []).append(region)
+
+    summaries: dict[str, _ColorSetSummary] = {}
+    for color, color_regions in grouped.items():
+        total_area = sum(_region_area(region) for region in color_regions)
+        if total_area <= 0:
+            continue
+        weighted_saturation = sum(
+            float(region.metrics.get("mean_saturation", 0.0)) * _region_area(region)
+            for region in color_regions
+        )
+        weighted_value = sum(
+            float(region.metrics.get("mean_value", 0.0)) * _region_area(region)
+            for region in color_regions
+        )
+        summaries[color] = _ColorSetSummary(
+            color=color,
+            component_count=len(color_regions),
+            total_area=total_area,
+            compact_count=sum(
+                1 for region in color_regions if _is_compact_color_set_region(region)
+            ),
+            mean_saturation=weighted_saturation / total_area,
+            mean_value=weighted_value / total_area,
+        )
+    return summaries
+
+
+def _is_minor_artifact_color(
+    color: str,
+    summary: _ColorSetSummary,
+    max_color_area: int,
+    rejected_regions: Sequence[DetectedColorRegion],
+) -> bool:
+    if summary.total_area < 120:
+        return True
+
+    same_color_arrow = any(
+        region.color == color and region.role == "ARROW" for region in rejected_regions
+    )
+    if same_color_arrow and summary.total_area < max(1000, max_color_area * 0.03):
+        return True
+
+    return False
+
+
+def _is_dimmed_blue_leak(
+    color: str,
+    summary: _ColorSetSummary,
+    rejected_regions: Sequence[DetectedColorRegion],
+) -> bool:
+    if color != "blue":
+        return False
+
+    same_color_dimmed = any(
+        region.color == color and region.role == "DIMMED_OLD_BLOCK"
+        for region in rejected_regions
+    )
+    pale_blue = summary.mean_saturation <= 0.55 and summary.mean_value >= 0.72
+    fragmented_blue = summary.component_count >= 8 and summary.compact_count <= 3
+    return pale_blue and (same_color_dimmed or fragmented_blue)
+
+
+def _has_active_white_evidence(
+    accepted_regions: Sequence[DetectedColorRegion],
+    summary: _ColorSetSummary,
+) -> bool:
+    compact_white_regions = [
+        region
+        for region in accepted_regions
+        if region.color == "white" and _is_compact_white_region(region)
+    ]
+    if compact_white_regions:
+        return True
+    return summary.total_area <= 3000 and summary.compact_count > 0
+
+
+def _is_compact_color_set_region(region: DetectedColorRegion) -> bool:
+    metrics = region.metrics
+    return (
+        _region_area(region) >= 80
+        and int(metrics.get("width", 0)) >= 6
+        and int(metrics.get("height", 0)) >= 6
+        and float(metrics.get("aspect_ratio", 99.0)) <= 4.0
+        and float(metrics.get("fill_ratio", 0.0)) >= 0.35
+        and not bool(metrics.get("touches_edge", False))
+    )
+
+
+def _is_compact_white_region(region: DetectedColorRegion) -> bool:
+    return _is_compact_color_set_region(region) and _is_compact_white_metrics(
+        region.metrics,
+        area=_region_area(region),
+    )
+
+
+def _is_compact_white_metrics(
+    metrics: dict[str, float | int | str | bool],
+    *,
+    area: int,
+) -> bool:
+    return (
+        180 <= area <= 2000
+        and int(metrics.get("width", 0)) >= 6
+        and int(metrics.get("height", 0)) >= 6
+        and float(metrics.get("aspect_ratio", 99.0)) <= 3.25
+        and float(metrics.get("fill_ratio", 0.0)) >= 0.50
+        and float(metrics.get("mean_saturation", 1.0)) <= 0.08
+        and float(metrics.get("mean_value", 0.0)) >= 0.90
+        and float(metrics.get("edge_contrast", 0.0)) >= 0.015
+        and not bool(metrics.get("touches_edge", False))
+    )
+
+
+def _region_area(region: DetectedColorRegion) -> int:
+    if region.area is not None:
+        return region.area
+    metric_area = region.metrics.get("area")
+    if isinstance(metric_area, int | float):
+        return int(metric_area)
+    x_min, y_min, x_max, y_max = region.bbox
+    return max(0, x_max - x_min) * max(0, y_max - y_min)
 
 
 @dataclass(frozen=True)
@@ -760,6 +930,8 @@ def _is_interior_background_like(
     color: str,
     metrics: dict[str, float | int | str | bool],
 ) -> bool:
+    if color == "white" and _is_compact_white_metrics(metrics, area=int(metrics["area"])):
+        return False
     return (
         color.lower() in _BACKGROUND_COLORS
         and int(metrics["area"]) >= 200
@@ -817,13 +989,11 @@ def _is_dimmed_old_region(
         return False
 
     destination_y = max((float(arrow.metrics["center_y"]) for arrow in arrow_regions), default=0.0)
-    below_arrow_destination = float(metrics["center_y"]) >= destination_y
+    below_arrow_destination = bool(arrow_regions) and float(metrics["center_y"]) >= destination_y
     large_washed_region = float(metrics["area_fraction"]) >= 0.04
     compact_white_candidate = (
         region.color == "white"
-        and float(metrics["fill_ratio"]) >= 0.85
-        and float(metrics["area_fraction"]) < 0.03
-        and not below_arrow_destination
+        and _is_compact_white_metrics(metrics, area=_region_area(region))
     )
     return (below_arrow_destination or large_washed_region) and not compact_white_candidate
 

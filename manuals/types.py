@@ -39,6 +39,7 @@ class DetectedColorRegion:
 class ManualStageResult:
     stage_id: str
     blocks: list[BlockRequirement] = field(default_factory=list)
+    active_colors: list[str] = field(default_factory=list)
     source_images: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     detected_regions: list[DetectedColorRegion] = field(default_factory=list)
