@@ -11,8 +11,10 @@ import pytest
 from manuals.color_detector import parse_region
 from manuals.formatter import format_manual_stage_result
 from manuals.reader import read_manual
+from manuals.types import ManualStageResult
 from manuals.visual_debug import has_preview_backend
 from scripts.manuals import read_manual as cli
+from scripts.manuals import run_manual_loop as loop_cli
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -185,6 +187,52 @@ def test_raw3_pages_report_expected_active_color_sets() -> None:
     for stage_id, colors in expected_colors.items():
         result = read_manual(input_dir, stage_id=stage_id)
         assert set(result.active_colors) == colors
+
+
+def test_manual_loop_orders_pages_by_stage_number_then_natural_name(tmp_path: Path) -> None:
+    for name in (
+        "manual2-c10.png",
+        "cover.png",
+        "manual2-c2.png",
+        "manual2-c1.png",
+        "manual2-c5.jpg",
+    ):
+        (tmp_path / name).write_bytes(b"synthetic placeholder")
+
+    pages = loop_cli.iter_manual_pages(tmp_path)
+
+    assert [page.name for page in pages] == [
+        "manual2-c1.png",
+        "manual2-c2.png",
+        "manual2-c5.jpg",
+        "manual2-c10.png",
+        "cover.png",
+    ]
+
+
+def test_manual_loop_repeats_advances_and_quits(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for name in ("manual2-c1.png", "manual2-c2.png", "manual2-c3.png"):
+        (tmp_path / name).write_bytes(b"synthetic placeholder")
+
+    processed_pages: list[str] = []
+    actions = iter(("repeat", "advance", "quit"))
+
+    def fake_process_page(page: Path, **kwargs: object) -> ManualStageResult:
+        processed_pages.append(page.name)
+        return ManualStageResult(stage_id=page.stem, active_colors=["green"])
+
+    monkeypatch.setattr(loop_cli, "process_page", fake_process_page)
+
+    result = loop_cli.run_loop(
+        tmp_path,
+        wait_func=lambda wait_mode: next(actions),
+    )
+
+    assert result == 0
+    assert processed_pages == ["manual2-c1.png", "manual2-c1.png", "manual2-c2.png"]
 
 
 def test_cli_default_run_does_not_create_output_files(
