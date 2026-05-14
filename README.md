@@ -14,8 +14,10 @@ Implemented and prototype packages:
   motor ID metadata, pose storage, motion storage, replay planning, and mockable
   arm/teleop interfaces.
 - `src/dume/logging.py`: project logger helpers and file logging setup.
-- `manuals/`: manual_reader v0 helpers for extracting best-effort colored block
-  requirements from manual images.
+- `manuals/`: manual_reader Prototype-Partial / current v0 helpers with
+  role-based component classification for best-effort active/new block color
+  extraction from manual images. Active color extraction is the current focus;
+  counts are component estimates, not reliable LEGO brick quantities.
 - `core/`, `camera/`, and `perception/`: DUM-E MediaPipeline contracts, camera
   frame sources, MediaPipe gesture recognition, geometry mapping, temporal
   filters, and a mock operator-presence boundary.
@@ -48,7 +50,7 @@ dume --project-root . replay motion inspection_cycle
 
 | Product lane | Current paths | Status |
 | --- | --- | --- |
-| `manual_reader` | Code: `manuals/`; script: `scripts/manuals/read_manual.py`; docs: `docs/manuals/`; data: `data/manuals/`; tests: `tests/test_manual_reader.py`, `tests/test_manual_color_detector.py` | Prototype-Partial / current v0 |
+| `manual_reader` | Code: `manuals/`; script: `scripts/manuals/read_manual.py`; docs: `docs/manuals/`; data: `data/manuals/`; tests: `tests/test_manual_reader.py`, `tests/test_manual_color_detector.py` | Prototype-Partial / current v0; role-based classifier, active color extraction still being hardened |
 | `robot_movement` | Code: `src/dume/control/`; CLI: `src/dume/main.py` / `dume` commands; config: `config/`; data: `data/poses.json`, `data/motions/` | Prototype-Partial; mock/scaffold only; no real SO-101 driver yet |
 | `gesture_reader` | Code: `core/`, `camera/`, `perception/`; demo: `demos/gesture_demo.py`; scripts: `scripts/mediapipe/`; docs: `docs/mediapipeline/`, `docs/mediapipe/`; data: `data/mediapipe/` | Prototype-Partial; Phase 0-4 code/infrastructure exists, Phase 5 recorded media missing |
 
@@ -225,7 +227,7 @@ Current dependency direction:
 
 ```text
 control/ owns hardware-adjacent utilities and shared interfaces today
-manuals/ owns manual_reader v0 parsing helpers
+manuals/ owns manual_reader v0 role-based parsing helpers
 core/ owns MediaPipeline contracts
 camera/ may import core/
 perception/ may import core/
@@ -300,14 +302,14 @@ Near-term:
 
 - Record the MediaPipeline regression clips declared in `data/mediapipe/regression_media/manifest.json`.
 - Complete manual webcam validation for Phase 3 and Phase 4 gestures/filters.
-- Strengthen manual_reader real-image ground-truth validation.
+- Strengthen manual_reader active color extraction on clean PNG/manual images.
 - Add new optional extras only when corresponding code needs them.
 - Keep all hardware-facing code testable without the robot attached.
 
 Later possibilities:
 
 - RealSense D435 validation and workspace perception.
-- Manual image parsing hardening for LEGO brick color sequence extraction.
+- Manual image parsing hardening for active/new LEGO color extraction.
 - Integration of MediaPipeline gesture events into a future command flow after
   acceptance criteria are met.
 - Real SO-101/LeRobot arm driver.

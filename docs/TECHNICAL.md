@@ -8,7 +8,7 @@ inferring repo state from stale roadmap text.
 the detailed setup, validation, architecture boundaries, current project status,
 and agent rules.
 
-Last updated: 2026-05-13
+Last updated: 2026-05-14
 Current phase: foundation scaffold plus three active prototype product lanes:
 manual_reader, robot_movement, and gesture_reader. DUM-E MediaPipeline Phase 5
 infrastructure exists, but recorded-media clips are still required before Phase
@@ -70,7 +70,7 @@ infrastructure exists, but recorded-media clips are still required before Phase
 | `control/teleop.py` | Stub | `TeleopDriver`, `MockTeleopDriver`, and CLI status text; live input planned. |
 | `control/replay.py` | Implemented | Readable replay plans plus execution through an injected `ArmDriver`. |
 | `logging.py` | Implemented | Project logger helper and file logging setup. |
-| `manuals/` | Prototype-Partial / current v0 | Manual reader helpers for best-effort colored block extraction from manual images. Independent from MediaPipe, LeRobot, camera, and perception. |
+| `manuals/` | Prototype-Partial / current v0 | Role-based manual reader classifier exists for `ACTIVE_BLOCK`, `DIMMED_OLD_BLOCK`, `ARROW`, `TEXT`, `BACKGROUND`, and `UNKNOWN`. Default `new-pieces` mode counts/prints only `ACTIVE_BLOCK`; `visible-blocks` exists for debugging/fallback. It writes no persistent files by default and writes only with `--output-dir` or `--preview-output`. Clean PNG/manual over-sensitivity remains; counts are best-effort component counts, not reliable brick quantities. Independent from gesture, camera, perception, LeRobot, and robot/control. |
 | `core/` | Implemented | MediaPipeline `Frame`, landmarks, and `FrameSource` contracts. |
 | `camera/` | Implemented | Fake, OpenCV webcam, RealSense-lazy, and video-file frame sources. `backend="lerobot"` lazily delegates to the LeRobot integration placeholder. |
 | `perception/` | Implemented | MediaPipe gesture service, canned + geometry mapper, temporal filters, and mock operator-presence boundary. |
@@ -90,7 +90,7 @@ Layer direction:
 
 ```text
 control/ is implemented today
-manuals/ owns manual_reader v0 parsing helpers
+manuals/ owns manual_reader v0 role-based parsing helpers
 core/ owns MediaPipeline contracts
 camera/ may import core/
 perception/ may import core/
@@ -104,8 +104,8 @@ Rules:
 - `core/`, `camera/`, and `perception/` stay separated by the MediaPipeline
   contracts.
 - `manuals/` is the current manual-reading code location. It should remain
-  independent from MediaPipe, LeRobot, camera, and perception unless a future
-  narrow interface is explicitly added for a real workflow.
+  independent from gesture, camera, perception, LeRobot, and robot/control
+  unless a future narrow interface is explicitly added for a real workflow.
 - `src/dume/control/` owns robot/control/session logic. It currently uses mock
   drivers and scaffolded replay/teleop paths; a real SO-101/LeRobot driver is
   planned.
@@ -122,9 +122,9 @@ MediaPipeline boundary rules:
 - `GestureService` consumes `Frame` objects or core frame-derived data, not
   camera backend objects.
 - `GestureEvent` must not emit `GestureType.NONE`.
-- MediaPipe, manual-reading, and LeRobot work must not directly depend on each
-  other. Share only explicit, narrow interfaces when a real workflow requires
-  it.
+- MediaPipe/gesture, manual-reading, LeRobot, and robot/control work must not
+  directly depend on each other. Share only explicit, narrow interfaces when a
+  real workflow requires it.
 - LeRobot code belongs under `src/dume/integrations/lerobot/`, not a top-level
   `lerobot/` Python package.
 
@@ -364,7 +364,7 @@ model-provider support remains a roadmap possibility and has no package or
 dependency group yet.
 
 Manual reader dependency truth: `manuals/` imports `numpy` for RGB array and
-color-region processing. Image loading tries OpenCV first and Pillow second when
+component classification. Image loading tries OpenCV first and Pillow second when
 those libraries are already installed. `pyproject.toml` currently declares
 `numpy` in the `dev`, `camera`, and `perception` extras, and OpenCV in the
 `camera` and `perception` extras; Pillow is not declared as a project dependency.
@@ -428,9 +428,17 @@ Manual reader checks:
 
 ```bash
 python scripts/manuals/read_manual.py --help
-python scripts/manuals/read_manual.py --input data/manuals/raw --stage next
+python scripts/manuals/read_manual.py --input data/manuals/raw --stage next --mode new-pieces
+python scripts/manuals/read_manual.py --input data/manuals/raw --stage next --mode new-pieces --debug-components --preview-output /tmp/manual_debug.png
+python scripts/manuals/read_manual.py --input data/manuals/raw --stage next --mode visible-blocks --preview-output /tmp/manual_visible_debug.png
 python -m pytest -q tests/test_manual_reader.py tests/test_manual_color_detector.py
 ```
+
+Manual reader smoke expectations: C1 JPEG should report green only; C3 JPEG
+should report green and red while rejecting pale/light-blue old blocks. Clean
+PNG/manual images remain too sensitive and can over-count studs, faces, or
+components, so current counts are best-effort diagnostics rather than reliable
+LEGO brick quantities.
 
 Current MediaPipeline state and camera-dependent TODOs are tracked in:
 
@@ -470,8 +478,8 @@ Near-term:
 - Keep README and this document synchronized with code.
 - Maintain tests around mock interfaces, replay execution, workspace config,
   README command truthfulness, and MediaPipeline boundaries.
-- Strengthen manual_reader validation against real images with ground-truth
-  expected counts.
+- Strengthen manual_reader active color set/color presence validation before
+  treating component counts as brick quantities.
 - Replace stubs with concrete implementations one package at a time.
 
 Planned later:
@@ -479,7 +487,8 @@ Planned later:
 - Real SO-101/LeRobot driver.
 - RealSense D435 validation and integration hardening.
 - Workspace perception for bin colors and loadout occupancy.
-- Manual reader hardening for color sequences.
+- Manual reader hardening for active color sets, component grouping, and arrow
+  rejection.
 - Integration of MediaPipeline gesture events into a future command flow after
   acceptance criteria are met.
 - Possible RAG/model providers once the interface requirements are known.
@@ -497,3 +506,4 @@ Planned later:
 | 2026-05-03 | No premature `rag` or `ai` extras | Future model support is possible but not designed yet. |
 | 2026-05-07 | Conda is the canonical runtime; `.venv/` is local-only | Keeps full-program runtime reproducible while allowing editor/test/agent convenience environments. |
 | 2026-05-13 | Cleanup documents current product lanes without moving packages | Manual reader v0, mock robot movement, and gesture reader infrastructure exist, but an import-refactor pass is intentionally deferred. |
+| 2026-05-14 | Manual reader accuracy pass uses role-based component classification | `new-pieces` now focuses on `ACTIVE_BLOCK` components without requiring arrows; clean PNG/manual over-counting remains open, so the next pass should prioritize active color presence, grouping, and arrow rejection over raw counts. |

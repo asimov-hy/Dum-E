@@ -1,8 +1,18 @@
 # Manual Reader
 
-The manual reader is a standalone version 0 subsystem for extracting current
-step LEGO block color requirements from manual images as plain text and a
-structured result.
+The manual reader is a standalone Prototype-Partial / current v0 subsystem for
+extracting active/new LEGO block colors from manual images as plain text and a
+structured result. The current implementation is a role-based component
+classifier, not a solved brick counter.
+
+Current component roles:
+
+- `ACTIVE_BLOCK`
+- `DIMMED_OLD_BLOCK`
+- `ARROW`
+- `TEXT`
+- `BACKGROUND`
+- `UNKNOWN`
 
 ## Input
 
@@ -17,40 +27,66 @@ first available image by filename.
 
 ## Output
 
-By default the CLI prints to the terminal only. It does not write extracted text,
-previews, or cached readings unless an output path is provided.
+By default the CLI prints to the terminal only. It writes only when
+`--output-dir` or `--preview-output` is provided.
 
 Use `--output-dir PATH` to write extracted text. Use `--clear-output-dir` with
 `--output-dir` to remove prior generated manual-reader outputs in that directory
-before writing.
+before writing. Use `--preview-output PATH` to write an annotated visual preview.
+During testing, prefer `/tmp` paths such as `/tmp/manual_debug.png` for debug
+previews.
+
+## Modes
+
+- `new-pieces`: intended robot/tool-handoff mode. It counts and prints only
+  components classified as `ACTIVE_BLOCK`.
+- `visible-blocks`: debug/fallback mode for inspecting visible block-like
+  components after rejecting text, arrows, and background.
+
+## Statuses
+
+- `ok`: active/new block candidates were found and the page was readable.
+- `ok_no_arrow_detected`: active blocks were found, but no arrow was detected.
+  Arrows are no longer required to detect active blocks.
+- `no_new_piece_indicator`: no active block candidates were found.
+- `ambiguous`: multiple plausible interpretations were found, if the current
+  classifier emits that status.
+- `last_page`: reserved for a later page-loop context that provides page order.
+  Do not use it as a standalone single-page/manual-reader result today.
 
 ## CLI Usage
 
+Default mode is `new-pieces`:
+
 ```bash
-python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next
+python scripts/manuals/read_manual.py \
+  --input data/manuals/raw \
+  --stage next \
+  --mode new-pieces
 ```
 
-Default mode is `--mode new-pieces`, which counts only components classified as
-`ACTIVE_BLOCK`. If no arrow/new-piece indicator is detected, the reader returns
-status `no new-piece indicator detected` instead of counting the whole page.
+`new-pieces` no longer requires arrows to detect active blocks.
+
+To print component classifications and save an annotated preview:
+
+```bash
+python scripts/manuals/read_manual.py \
+  --input data/manuals/raw \
+  --stage next \
+  --mode new-pieces \
+  --debug-components \
+  --preview-output /tmp/manual_debug.png
+```
 
 For a debug/fallback pass that counts visible block-like components after
 rejecting text, arrows, and background:
 
 ```bash
-python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next --mode visible-blocks
-```
-
-To save an annotated visual debug preview:
-
-```bash
-python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next --preview-output /tmp/manual_debug.png
-```
-
-To print component classifications:
-
-```bash
-python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next --debug-components
+python scripts/manuals/read_manual.py \
+  --input data/manuals/raw \
+  --stage next \
+  --mode visible-blocks \
+  --preview-output /tmp/manual_visible_debug.png
 ```
 
 Example output:
@@ -65,28 +101,34 @@ Required colored blocks:
 
 ## Visual Debugging
 
-Use `--preview-output PATH` to write a preview. `--show` also writes a preview,
-using a temporary `/tmp/manual_reader_*.png` path when no explicit path is
-provided, then attempts to open it with the system viewer.
+Use `--debug-components` to print role classifications and rejection reasons.
+Use `--preview-output PATH` to write a preview.
 
 The preview labels accepted `ACTIVE_BLOCK` boxes and rejected `ARROW`, `TEXT`,
 `DIMMED_OLD_BLOCK`, `BACKGROUND`, and `UNKNOWN` boxes with rejection reasons.
 This is intended for classical-CV tuning, not for persistent cache storage.
 
-If the system image viewer cannot be opened, the CLI prints the preview path
-instead of crashing.
+Use `--clear-output-dir` only with `--output-dir` when intentionally replacing
+generated text outputs.
 
 ## Current Limits
 
-- Default output is terminal-only unless `--output-dir`, `--preview-output`, or
-  `--show` is passed.
+- Default output is terminal-only unless `--output-dir` or `--preview-output` is
+  passed.
 - The reader is not connected to robot control.
 - The reader does not import LeRobot, MediaPipe, or `src/dume/control`.
 - Image loading and preview writing use OpenCV or Pillow only if one is already
   installed.
 - Core detection uses classical component classification over RGB/HSV/gray numpy
   arrays. It does not use OCR, CNNs, transformers, SAM, YOLO, or MediaPipe.
-- Counts are best-effort estimates from components classified as active blocks.
+- Counts are best-effort component counts from roles classified as active blocks,
+  not reliable LEGO brick quantities.
+- Clean PNG/manual images are currently too sensitive and can over-count studs,
+  faces, or components through over-segmentation, for example high counts such
+  as `green: 46`.
+- The next accuracy pass should add active color-set output/color presence and
+  better component grouping. Arrow rejection should continue improving, but raw
+  component counts should not be treated as final brick counts yet.
 
 ## Manual Validation
 
@@ -94,22 +136,39 @@ To verify real manual images, place representative photos or scans in
 `data/manuals/raw/`, then run:
 
 ```bash
-python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next
+python scripts/manuals/read_manual.py \
+  --input data/manuals/raw \
+  --stage next \
+  --mode new-pieces
 ```
 
 For visual inspection:
 
 ```bash
-python3 scripts/manuals/read_manual.py --input data/manuals/raw --stage next --mode new-pieces --debug-components --preview-output /tmp/manual_debug.png
+python scripts/manuals/read_manual.py \
+  --input data/manuals/raw \
+  --stage next \
+  --mode new-pieces \
+  --debug-components \
+  --preview-output /tmp/manual_debug.png
 ```
 
 Compare terminal output and the preview against the source image. Keep generated
 `.txt` and preview outputs local; commit only source images, docs, or code that
 are intentionally part of the project.
 
+Smoke target truth:
+
+- C1 JPEG: green only.
+- C3 JPEG: green and red, with pale/light-blue old blocks rejected.
+
 ## Future Path
 
 The reader returns a structured `ManualStageResult` internally with page
 filename, mode, status, color counts, accepted components, rejected components,
-and warnings. A future page loop, gesture confirmation, or robot handoff can
-consume that type through a narrow interface after validation.
+and warnings. The final goal is to read a manual page and output the active/new
+block colors needed for that step. After validation, that output can feed:
+
+```text
+manual page loop -> gesture confirmation -> robot/LeRobot tool-provider handoff
+```

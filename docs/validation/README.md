@@ -68,16 +68,38 @@ Phase checklist:
 
 ## Manual Reader Validation
 
+Official validation should run in the conda `dume` environment. Alternate
+Python environments or temporary dependency installs can help during local
+debugging, but they are not official validation.
+
 ```bash
-python scripts/manuals/read_manual.py --help
-python scripts/manuals/read_manual.py --input data/manuals/raw --stage next --mode new-pieces --debug-components --preview-output /tmp/manual_debug.png
-python scripts/manuals/read_manual.py --input data/manuals/raw --stage next --mode visible-blocks --debug-components --preview-output /tmp/manual_visible_debug.png
 python -m pytest -q tests/test_manual_reader.py tests/test_manual_color_detector.py
 python -m ruff check .
+python scripts/manuals/read_manual.py --help
 ```
 
-The reader is Prototype-Partial. Passing these checks does not replace
-real-image ground-truth validation of detected colors and counts.
+```bash
+python scripts/manuals/read_manual.py \
+  --input data/manuals/raw \
+  --stage next \
+  --mode new-pieces
+```
+
+```bash
+python scripts/manuals/read_manual.py \
+  --input data/manuals/raw \
+  --stage next \
+  --mode new-pieces \
+  --debug-components \
+  --preview-output /tmp/manual_debug.png
+```
+
+The reader is Prototype-Partial. Current smoke expectations are C1 JPEG green
+only, and C3 JPEG green plus red while rejecting pale/light-blue old blocks.
+Passing these checks does not solve clean PNG/manual accuracy: those images can
+still over-count studs, faces, or components. Treat current counts as
+best-effort diagnostics. Clean PNG accuracy is not accepted yet until component
+grouping and color-set output are fixed.
 
 ## Diagnostic Scripts
 
