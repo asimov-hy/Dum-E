@@ -111,7 +111,62 @@ In the manual page loop, use `--open-preview` to generate the current page's
 debug preview, open it while the loop waits for confirmation, and close it
 before advancing to the next page.
 
-The page loop defaults to keyboard confirmation:
+The root launcher is the preferred manual-page loop entry point:
+
+```bash
+python main.py
+python main.py check
+python main.py setup
+python main.py --config configs/manual_loop.local.yaml check
+```
+
+`python main.py` loads `configs/manual_loop.default.yaml`, then a local user
+config, then CLI overrides. The precedence is:
+
+```text
+CLI args > explicit --config file or configs/manual_loop.local.yaml > configs/manual_loop.default.yaml > built-in defaults
+```
+
+The tracked default config uses `manual.wait_mode: enter`, so a normal run is
+keyboard-only. It does not start a camera, MediaPipe, RealSense, LeRobot, robot
+teleoperation, or `env.step(action)`. Local machine choices belong in
+`configs/manual_loop.local.yaml`, which is gitignored.
+
+Example local config:
+
+```yaml
+manual:
+  wait_mode: enter
+
+gesture:
+  source: webcam
+  device: 0
+  model_path: data/mediapipe/models/gesture_recognizer.task
+  timeout_s: 30
+  fallback: enter
+  mapping:
+    THUMBS_UP: advance
+    TWO_FINGERS: repeat
+    FIST: quit
+    PALM: none
+    ONE_FINGER: none
+    THREE_FINGERS: none
+    NONE: none
+```
+
+Gesture sources are `fake`, `webcam`, `realsense`, and `video`. Use
+`gesture.device` or `--gesture-device` to pick a webcam index, and
+`gesture.video_path` or `--gesture-video-path` for video files. Mapping keys may
+use enum names such as `THUMBS_UP` or lowercase values such as `thumbs_up`.
+Mapping actions are limited to `advance`, `repeat`, `quit`, and `none`; `none`
+means the gesture produces no page-loop action. `fallback: enter` switches to
+keyboard confirmation if gesture startup or timeout cannot produce an action.
+
+This launcher is only manual-page confirmation input routing. It does not add
+LeRobot teleoperation, call `env.step(action)`, or change action tensors or
+dataset schemas.
+
+The older script entry point also defaults to keyboard confirmation:
 
 ```bash
 python scripts/manuals/run_manual_loop.py --input data/manuals/raw3

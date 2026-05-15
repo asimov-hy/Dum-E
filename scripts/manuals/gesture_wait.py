@@ -18,6 +18,7 @@ GESTURE_ACTIONS: dict[GestureType, LoopAction] = {
     GestureType.TWO_FINGERS: "repeat",
     GestureType.FIST: "quit",
 }
+GestureActionMapping = dict[GestureType, LoopAction]
 
 
 class FrameSourceLike(Protocol):
@@ -37,13 +38,22 @@ class GestureServiceLike(Protocol):
 WaitFunc = Callable[[str], LoopAction]
 
 
-def loop_action_from_gesture_event(event: GestureEvent) -> LoopAction | None:
-    return GESTURE_ACTIONS.get(event.type)
+def loop_action_from_gesture_event(
+    event: GestureEvent,
+    action_mapping: GestureActionMapping | None = None,
+) -> LoopAction | None:
+    action = (action_mapping or GESTURE_ACTIONS).get(event.type)
+    if action == "none":
+        return None
+    return action
 
 
-def loop_action_from_gesture_events(events: Sequence[GestureEvent]) -> LoopAction | None:
+def loop_action_from_gesture_events(
+    events: Sequence[GestureEvent],
+    action_mapping: GestureActionMapping | None = None,
+) -> LoopAction | None:
     for event in events:
-        action = loop_action_from_gesture_event(event)
+        action = loop_action_from_gesture_event(event, action_mapping)
         if action is not None:
             return action
     return None
@@ -59,6 +69,7 @@ class GestureManualWait:
         gesture_service: GestureServiceLike,
         timeout_s: float | None = None,
         fallback_wait_func: WaitFunc | None = None,
+        action_mapping: GestureActionMapping | None = None,
         poll_delay_s: float = 0.01,
         log_interval_s: float = 1.0,
         clock: Callable[[], float] = time.monotonic,
@@ -75,6 +86,7 @@ class GestureManualWait:
         self.gesture_service = gesture_service
         self.timeout_s = timeout_s
         self.fallback_wait_func = fallback_wait_func
+        self.action_mapping = dict(action_mapping or GESTURE_ACTIONS)
         self.poll_delay_s = poll_delay_s
         self.log_interval_s = log_interval_s
         self.clock = clock
@@ -140,7 +152,7 @@ class GestureManualWait:
                 return self._timeout_action()
 
             events = list(self.gesture_service.process_frame(frame))
-            action = loop_action_from_gesture_events(events)
+            action = loop_action_from_gesture_events(events, self.action_mapping)
             if action is not None:
                 self._log_events(events, action=action)
                 return action
@@ -182,10 +194,12 @@ class GestureManualWait:
 def build_gesture_wait(
     *,
     source_name: str = "webcam",
+    device: int | str | None = None,
     video_path: str | None = None,
     model_path: str = "data/mediapipe/models/gesture_recognizer.task",
     timeout_s: float | None = None,
     fallback_wait_func: WaitFunc | None = None,
+    action_mapping: dict[str, str | None] | GestureActionMapping | None = None,
 ) -> GestureManualWait:
     mpl_config_dir = os.path.join(tempfile.gettempdir(), "dume_mplconfig")
     os.makedirs(mpl_config_dir, exist_ok=True)
@@ -196,6 +210,8 @@ def build_gesture_wait(
 
     source_kwargs: dict[str, object] = {}
     normalized_source = source_name.lower()
+    if normalized_source in {"webcam", "opencv"} and device is not None:
+        source_kwargs["device"] = device
     if normalized_source == "video":
         if video_path is None:
             raise ValueError("--gesture-video-path is required when --gesture-source video")
@@ -208,4 +224,29 @@ def build_gesture_wait(
         gesture_service=gesture_service,
         timeout_s=timeout_s,
         fallback_wait_func=fallback_wait_func,
+        action_mapping=_normalize_action_mapping(action_mapping),
     )
+
+
+def _normalize_action_mapping(
+    action_mapping: dict[str, str | None] | GestureActionMapping | None,
+) -> GestureActionMapping | None:
+    if action_mapping is None:
+        return None
+
+    normalized: GestureActionMapping = {}
+    for gesture_type, action in action_mapping.items():
+        if action is None or action == "none":
+            continue
+        if isinstance(gesture_type, GestureType):
+            normalized[gesture_type] = action
+            continue
+        normalized[_normalize_gesture_type(gesture_type)] = action
+    return normalized
+
+
+def _normalize_gesture_type(value: str) -> GestureType:
+    try:
+        return GestureType[value.strip().upper()]
+    except KeyError:
+        return GestureType(value.strip().lower())

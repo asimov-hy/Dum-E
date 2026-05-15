@@ -94,10 +94,11 @@ python scripts/manuals/read_manual.py \
   --preview-output /tmp/manual_debug.png
 ```
 
-The reader is Prototype-Partial. Current smoke expectations are C1 JPEG green
-only, and C3 JPEG green plus red while rejecting pale/light-blue old blocks.
-For clean PNG validation in `data/manuals/raw3`, the primary target is the
-active color set:
+The reader is Prototype-Partial. Current JPEG smoke behavior is C1 green only,
+and C3 green, red, and blue. Earlier C3 targets tried to reject the
+pale/light-blue old blocks; that remains desired behavior for a later accuracy
+pass, not current runtime truth. For clean PNG validation in `data/manuals/raw3`,
+the primary target is the active color set:
 
 - C1: green.
 - C2: green.

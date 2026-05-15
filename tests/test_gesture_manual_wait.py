@@ -48,6 +48,31 @@ def test_loop_action_from_gesture_events_uses_first_mapped_event() -> None:
     assert loop_action_from_gesture_events(events) == "repeat"
 
 
+def test_loop_action_from_gesture_events_accepts_custom_mapping() -> None:
+    events = [_event(GestureType.PALM)]
+
+    assert (
+        loop_action_from_gesture_events(events, {GestureType.PALM: "advance"})
+        == "advance"
+    )
+
+
+def test_loop_action_from_gesture_events_treats_none_as_no_action() -> None:
+    events = [_event(GestureType.THUMBS_UP), _event(GestureType.PALM)]
+
+    assert (
+        loop_action_from_gesture_events(
+            events,
+            {GestureType.THUMBS_UP: "none", GestureType.PALM: "advance"},
+        )
+        == "advance"
+    )
+
+
+def test_default_mapping_leaves_none_gesture_unmapped() -> None:
+    assert loop_action_from_gesture_event(_event(GestureType.NONE)) is None
+
+
 def test_gesture_manual_wait_returns_action_from_synthetic_event_batch() -> None:
     source = _FakeSource()
     service = _FakeGestureService(
@@ -209,6 +234,34 @@ def test_build_gesture_wait_accepts_create_source_video_colon_form(
 def test_build_gesture_wait_requires_video_path_for_video_source() -> None:
     with pytest.raises(ValueError, match="gesture-video-path"):
         build_gesture_wait(source_name="video", model_path="model.task")
+
+
+def test_build_gesture_wait_normalizes_uppercase_and_none_mapping(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_create_source(source_name: str, **kwargs: object) -> _FakeSource:
+        return _FakeSource()
+
+    class FakeGestureService:
+        def __init__(self, config: object) -> None:
+            pass
+
+        def process_frame(self, frame: object) -> list[GestureEvent]:
+            return []
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(camera_source_module, "create_source", fake_create_source)
+    monkeypatch.setattr(gesture_module, "GestureService", FakeGestureService)
+
+    wait = build_gesture_wait(
+        source_name="fake",
+        model_path="model.task",
+        action_mapping={"PALM": "advance", "THUMBS_UP": "none", "NONE": "none"},
+    )
+
+    assert wait.action_mapping == {GestureType.PALM: "advance"}
 
 
 def test_gesture_manual_wait_rejects_non_gesture_wait_mode() -> None:

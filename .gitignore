@@ -27,6 +27,8 @@ outputs/
 recordings/
 tmp/
 temp/
+.dume/
+configs/*.local.yaml
 
 # Generated manual-reader outputs
 data/manuals/extracted/*.txt

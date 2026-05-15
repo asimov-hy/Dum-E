@@ -1,0 +1,25 @@
+manual:
+  input_dir: data/manuals/raw
+  wait_mode: enter
+  mode: new-pieces
+  preview_dir:
+  open_preview: false
+  debug_components: false
+  open_image: false
+  stop_after:
+  repeat_on_fail: false
+gesture:
+  source: webcam
+  device:
+  video_path:
+  model_path: data/mediapipe/models/gesture_recognizer.task
+  timeout_s: 30
+  fallback:
+  mapping:
+    THUMBS_UP: advance
+    TWO_FINGERS: repeat
+    FIST: quit
+    PALM: none
+    ONE_FINGER: none
+    THREE_FINGERS: none
+    NONE: none

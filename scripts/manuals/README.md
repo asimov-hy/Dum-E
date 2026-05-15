@@ -10,7 +10,35 @@ Basic command:
 python scripts/manuals/read_manual.py --input data/manuals/raw --stage next --mode new-pieces
 ```
 
-Manual page loop:
+Root launcher manual page loop:
+
+```bash
+python main.py
+python main.py check
+python main.py setup
+python main.py --config configs/manual_loop.local.yaml check
+```
+
+The root launcher reads `configs/manual_loop.default.yaml`, then either
+`configs/manual_loop.local.yaml` or an explicit `--config` file, then CLI
+overrides. `configs/manual_loop.local.yaml` is gitignored for machine-local
+camera/model choices. The default config uses `manual.wait_mode: enter`, so it
+is keyboard-only and does not start camera, MediaPipe, RealSense, LeRobot, or
+robot-control dependencies.
+
+Gesture sources are `fake`, `webcam`, `realsense`, and `video`. Use
+`--gesture-device` for a webcam index and `--gesture-video-path` for video
+files. Gesture mapping accepts enum names such as `THUMBS_UP` or lowercase names
+such as `thumbs_up`, with actions restricted to `advance`, `repeat`, `quit`,
+and `none`. `none` means no page-loop action. Keyboard fallback and timeout are
+configured with `fallback: enter` / `--gesture-fallback enter` and
+`timeout_s` / `--gesture-timeout-s`.
+
+This launcher and the script below are manual-page confirmation only. They do
+not add LeRobot teleoperation, call `env.step(action)`, or change action tensors
+or dataset schemas.
+
+Script-level manual page loop:
 
 ```bash
 python scripts/manuals/run_manual_loop.py --input data/manuals/raw3
