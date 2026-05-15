@@ -76,9 +76,37 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--wait-mode",
-        choices=("enter",),
+        choices=("enter", "gesture"),
         default="enter",
-        help="Wait strategy. Current manual-only mode advances on Enter.",
+        help="Wait strategy. Enter mode advances on keyboard input; gesture mode uses MediaPipe.",
+    )
+    parser.add_argument(
+        "--gesture-source",
+        choices=("webcam", "realsense", "fake", "video"),
+        default="webcam",
+        help="Frame source for --wait-mode gesture.",
+    )
+    parser.add_argument(
+        "--gesture-video-path",
+        default=None,
+        help="Video file path when --gesture-source video is used.",
+    )
+    parser.add_argument(
+        "--gesture-model-path",
+        default="data/mediapipe/models/gesture_recognizer.task",
+        help="MediaPipe gesture recognizer .task model path.",
+    )
+    parser.add_argument(
+        "--gesture-timeout-s",
+        type=float,
+        default=None,
+        help="Optional gesture wait timeout. Timeout quits unless --gesture-fallback enter is set.",
+    )
+    parser.add_argument(
+        "--gesture-fallback",
+        choices=("enter",),
+        default=None,
+        help="Fallback to keyboard input if gesture startup or timeout cannot produce an action.",
     )
     return parser
 
@@ -88,18 +116,59 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.stop_after is not None and args.stop_after < 1:
         print("Manual loop error: --stop-after must be positive")
         return 1
+    if args.gesture_timeout_s is not None and args.gesture_timeout_s < 0:
+        print("Manual loop error: --gesture-timeout-s must not be negative")
+        return 1
 
-    return run_loop(
-        Path(args.input),
-        mode=args.mode,
-        preview_dir=Path(args.preview_dir) if args.preview_dir else None,
-        open_preview_flag=args.open_preview,
-        debug_components=args.debug_components,
-        open_image_flag=args.open_image,
-        stop_after=args.stop_after,
-        repeat_on_fail=args.repeat_on_fail,
-        wait_mode=args.wait_mode,
-    )
+    wait_mode = args.wait_mode
+    wait_func: WaitFunc = wait_for_confirmation
+    gesture_wait = None
+
+    if args.wait_mode == "gesture":
+        try:
+            from scripts.manuals.gesture_wait import build_gesture_wait
+
+            gesture_wait = build_gesture_wait(
+                source_name=args.gesture_source,
+                video_path=args.gesture_video_path,
+                model_path=args.gesture_model_path,
+                timeout_s=args.gesture_timeout_s,
+                fallback_wait_func=wait_for_confirmation
+                if args.gesture_fallback == "enter"
+                else None,
+            )
+            gesture_wait.start()
+            wait_func = gesture_wait
+        except Exception as exc:
+            if args.gesture_fallback == "enter":
+                print(f"Gesture wait unavailable ({exc}); falling back to keyboard input.")
+                wait_mode = "enter"
+                wait_func = wait_for_confirmation
+                if gesture_wait is not None:
+                    gesture_wait.close()
+                    gesture_wait = None
+            else:
+                print(f"Manual loop error: could not start gesture wait: {exc}")
+                if gesture_wait is not None:
+                    gesture_wait.close()
+                return 1
+
+    try:
+        return run_loop(
+            Path(args.input),
+            mode=args.mode,
+            preview_dir=Path(args.preview_dir) if args.preview_dir else None,
+            open_preview_flag=args.open_preview,
+            debug_components=args.debug_components,
+            open_image_flag=args.open_image,
+            stop_after=args.stop_after,
+            repeat_on_fail=args.repeat_on_fail,
+            wait_mode=wait_mode,
+            wait_func=wait_func,
+        )
+    finally:
+        if gesture_wait is not None:
+            gesture_wait.close()
 
 
 def iter_manual_pages(input_dir: Path) -> list[Path]:

@@ -111,6 +111,28 @@ In the manual page loop, use `--open-preview` to generate the current page's
 debug preview, open it while the loop waits for confirmation, and close it
 before advancing to the next page.
 
+The page loop defaults to keyboard confirmation:
+
+```bash
+python scripts/manuals/run_manual_loop.py --input data/manuals/raw3
+```
+
+Use `--wait-mode gesture` to confirm pages with the gesture reader:
+
+```bash
+python scripts/manuals/run_manual_loop.py \
+  --input data/manuals/raw3 \
+  --wait-mode gesture \
+  --gesture-source webcam
+```
+
+Gesture confirmation maps `THUMBS_UP` to advance, `TWO_FINGERS` to repeat, and
+`FIST` to quit. `PALM`, `ONE_FINGER`, `THREE_FINGERS`, `NONE`, low-confidence
+gestures, unstable gestures, and cooldown-suppressed gestures do not advance the
+page. Gesture startup fails fast unless `--gesture-fallback enter` is provided.
+If `--gesture-timeout-s` is set, timeout quits for safety unless keyboard
+fallback is explicitly enabled.
+
 The preview labels accepted `ACTIVE_BLOCK` boxes and rejected `ARROW`, `TEXT`,
 `DIMMED_OLD_BLOCK`, `BACKGROUND`, and `UNKNOWN` boxes with rejection reasons.
 This is intended for classical-CV tuning, not for persistent cache storage.
@@ -123,6 +145,9 @@ generated text outputs.
 - Default output is terminal-only unless `--output-dir` or `--preview-output` is
   passed.
 - The reader is not connected to robot control.
+- Gesture confirmation is a script-level page-loop input adapter. It does not
+  call LeRobot `env.step(action)`, create robot movement, or alter dataset action
+  schemas.
 - The reader does not import LeRobot, MediaPipe, or `src/dume/control`.
 - Image loading and preview writing use OpenCV or Pillow only if one is already
   installed.
