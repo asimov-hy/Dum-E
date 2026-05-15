@@ -235,6 +235,100 @@ def test_manual_loop_repeats_advances_and_quits(
     assert processed_pages == ["manual2-c1.png", "manual2-c1.png", "manual2-c2.png"]
 
 
+def test_manual_loop_open_preview_closes_between_pages_and_on_quit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for name in ("manual2-c1.png", "manual2-c2.png", "manual2-c3.png"):
+        (tmp_path / name).write_bytes(b"synthetic placeholder")
+
+    processed_pages: list[str] = []
+    opened_previews: list[str] = []
+    closed_previews: list[str] = []
+    actions = iter(("advance", "quit"))
+
+    class FakePreviewProcess:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    def fake_process_page(page: Path, **kwargs: object) -> ManualStageResult:
+        processed_pages.append(page.name)
+        preview_dir = kwargs["preview_dir"]
+        assert isinstance(preview_dir, Path)
+        (preview_dir / f"{page.stem}_preview.png").write_bytes(b"preview")
+        return ManualStageResult(stage_id=page.stem, active_colors=["green"])
+
+    def fake_open_preview(path: Path) -> FakePreviewProcess:
+        opened_previews.append(path.name)
+        return FakePreviewProcess(path.name)
+
+    def fake_close_preview(proc: FakePreviewProcess | None) -> None:
+        if proc is not None:
+            closed_previews.append(proc.name)
+
+    monkeypatch.setattr(loop_cli, "process_page", fake_process_page)
+    monkeypatch.setattr(loop_cli, "open_preview", fake_open_preview)
+    monkeypatch.setattr(loop_cli, "close_preview", fake_close_preview)
+
+    result = loop_cli.run_loop(
+        tmp_path,
+        open_preview_flag=True,
+        wait_func=lambda wait_mode: next(actions),
+    )
+
+    assert result == 0
+    assert processed_pages == ["manual2-c1.png", "manual2-c2.png"]
+    assert opened_previews == ["manual2-c1_preview.png", "manual2-c2_preview.png"]
+    assert closed_previews == ["manual2-c1_preview.png", "manual2-c2_preview.png"]
+
+
+def test_manual_loop_repeat_keeps_existing_preview_open(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for name in ("manual2-c1.png", "manual2-c2.png"):
+        (tmp_path / name).write_bytes(b"synthetic placeholder")
+
+    processed_pages: list[str] = []
+    opened_previews: list[str] = []
+    closed_previews: list[str] = []
+    actions = iter(("repeat", "advance", "quit"))
+
+    class FakePreviewProcess:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    def fake_process_page(page: Path, **kwargs: object) -> ManualStageResult:
+        processed_pages.append(page.name)
+        preview_dir = kwargs["preview_dir"]
+        assert isinstance(preview_dir, Path)
+        (preview_dir / f"{page.stem}_preview.png").write_bytes(b"preview")
+        return ManualStageResult(stage_id=page.stem, active_colors=["green"])
+
+    def fake_open_preview(path: Path) -> FakePreviewProcess:
+        opened_previews.append(path.name)
+        return FakePreviewProcess(path.name)
+
+    def fake_close_preview(proc: FakePreviewProcess | None) -> None:
+        if proc is not None:
+            closed_previews.append(proc.name)
+
+    monkeypatch.setattr(loop_cli, "process_page", fake_process_page)
+    monkeypatch.setattr(loop_cli, "open_preview", fake_open_preview)
+    monkeypatch.setattr(loop_cli, "close_preview", fake_close_preview)
+
+    result = loop_cli.run_loop(
+        tmp_path,
+        open_preview_flag=True,
+        wait_func=lambda wait_mode: next(actions),
+    )
+
+    assert result == 0
+    assert processed_pages == ["manual2-c1.png", "manual2-c1.png", "manual2-c2.png"]
+    assert opened_previews == ["manual2-c1_preview.png", "manual2-c2_preview.png"]
+    assert closed_previews == ["manual2-c1_preview.png", "manual2-c2_preview.png"]
+
+
 def test_cli_default_run_does_not_create_output_files(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

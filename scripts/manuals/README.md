@@ -16,6 +16,14 @@ Manual page loop:
 python scripts/manuals/run_manual_loop.py --input data/manuals/raw3
 ```
 
+To open each generated debug preview while confirming pages:
+
+```bash
+python scripts/manuals/run_manual_loop.py \
+  --input data/manuals/raw3 \
+  --open-preview
+```
+
 The script prints to the terminal by default. Use `--output-dir` or
 `--preview-output` when a persistent artifact is needed.
 

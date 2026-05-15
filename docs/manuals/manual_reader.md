@@ -107,6 +107,10 @@ Component counts:
 Use `--debug-components` to print role classifications and rejection reasons.
 Use `--preview-output PATH` to write a preview.
 
+In the manual page loop, use `--open-preview` to generate the current page's
+debug preview, open it while the loop waits for confirmation, and close it
+before advancing to the next page.
+
 The preview labels accepted `ACTIVE_BLOCK` boxes and rejected `ARROW`, `TEXT`,
 `DIMMED_OLD_BLOCK`, `BACKGROUND`, and `UNKNOWN` boxes with rejection reasons.
 This is intended for classical-CV tuning, not for persistent cache storage.

@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
+import signal
+import subprocess
 import sys
 import tempfile
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import replace
 from pathlib import Path
@@ -43,6 +47,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--preview-dir",
         default=None,
         help="Optional directory for per-page debug previews.",
+    )
+    parser.add_argument(
+        "--open-preview",
+        action="store_true",
+        help="Generate and open each per-page debug preview while waiting for confirmation.",
     )
     parser.add_argument(
         "--debug-components",
@@ -84,6 +93,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         Path(args.input),
         mode=args.mode,
         preview_dir=Path(args.preview_dir) if args.preview_dir else None,
+        open_preview_flag=args.open_preview,
         debug_components=args.debug_components,
         open_image_flag=args.open_image,
         stop_after=args.stop_after,
@@ -121,6 +131,44 @@ def wait_for_confirmation(wait_mode: str = "enter") -> LoopAction:
     if normalized == "r":
         return "repeat"
     return "advance"
+
+
+def open_preview(path: Path) -> subprocess.Popen | None:
+    """Open a preview with a viewer process the loop can later terminate."""
+    if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+        return None
+
+    for command in _managed_preview_commands(path):
+        popen_kwargs: dict[str, object] = {
+            "stdout": subprocess.DEVNULL,
+            "stderr": subprocess.DEVNULL,
+        }
+        if os.name == "posix":
+            popen_kwargs["start_new_session"] = True
+        try:
+            process = subprocess.Popen(command, **popen_kwargs)
+        except OSError:
+            continue
+
+        time.sleep(0.15)
+        if process.poll() is None:
+            return process
+        process.wait()
+
+    return None
+
+
+def close_preview(proc: subprocess.Popen | None) -> None:
+    if proc is None:
+        return
+
+    _terminate_preview_process(proc, signal.SIGTERM)
+
+    try:
+        proc.wait(timeout=2.0)
+    except subprocess.TimeoutExpired:
+        _terminate_preview_process(proc, signal.SIGKILL)
+        proc.wait(timeout=2.0)
 
 
 def process_page(
@@ -174,6 +222,7 @@ def run_loop(
     *,
     mode: ReaderMode = "new-pieces",
     preview_dir: Path | None = None,
+    open_preview_flag: bool = False,
     debug_components: bool = False,
     open_image_flag: bool = False,
     stop_after: int | None = None,
@@ -195,40 +244,63 @@ def run_loop(
         pages = pages[:stop_after]
 
     page_index = 0
-    while page_index < len(pages):
-        page = pages[page_index]
-        print("")
-        print(f"===== Page {page_index + 1}/{len(pages)}: {page.name} =====")
+    preview_process: subprocess.Popen | None = None
+    preview_page_index: int | None = None
+    temporary_preview_dir: tempfile.TemporaryDirectory[str] | None = None
+    effective_preview_dir = preview_dir
+    if open_preview_flag and effective_preview_dir is None:
+        temporary_preview_dir = tempfile.TemporaryDirectory(prefix="dume_manual_loop_previews_")
+        effective_preview_dir = Path(temporary_preview_dir.name)
 
-        try:
-            result = process_page(
-                page,
-                input_dir=input_dir,
-                mode=mode,
-                preview_dir=preview_dir,
-                debug_components=debug_components,
-                open_image_flag=open_image_flag,
-            )
-        except (ImageLoadError, PreviewError, ValueError) as exc:
-            print(f"Manual loop error while reading {page.name}: {exc}")
-            if not repeat_on_fail:
+    try:
+        while page_index < len(pages):
+            page = pages[page_index]
+            print("")
+            print(f"===== Page {page_index + 1}/{len(pages)}: {page.name} =====")
+
+            try:
+                result = process_page(
+                    page,
+                    input_dir=input_dir,
+                    mode=mode,
+                    preview_dir=effective_preview_dir,
+                    debug_components=debug_components,
+                    open_image_flag=open_image_flag,
+                )
+            except (ImageLoadError, PreviewError, ValueError) as exc:
+                print(f"Manual loop error while reading {page.name}: {exc}")
+                if not repeat_on_fail:
+                    return 1
+                result = None
+
+            if result is not None and open_preview_flag and preview_page_index != page_index:
+                preview_path = _preview_path(effective_preview_dir, page)
+                preview_process = open_preview(preview_path)
+                preview_page_index = page_index
+                if preview_process is None:
+                    print(f"Could not open preview automatically. Open manually at: {preview_path}")
+
+            action = wait_func(wait_mode)
+            if action == "quit":
+                print("Manual loop quit.")
+                return 0
+            if action == "repeat":
+                continue
+            if action != "advance":
+                print(f"Manual loop error: unsupported wait action: {action}")
                 return 1
-            result = None
+            if repeat_on_fail and result is not None and _page_failed(result):
+                print("Repeat-on-fail is enabled; staying on current page.")
+                continue
 
-        action = wait_func(wait_mode)
-        if action == "quit":
-            print("Manual loop quit.")
-            return 0
-        if action == "repeat":
-            continue
-        if action != "advance":
-            print(f"Manual loop error: unsupported wait action: {action}")
-            return 1
-        if repeat_on_fail and result is not None and _page_failed(result):
-            print("Repeat-on-fail is enabled; staying on current page.")
-            continue
-
-        page_index += 1
+            close_preview(preview_process)
+            preview_process = None
+            preview_page_index = None
+            page_index += 1
+    finally:
+        close_preview(preview_process)
+        if temporary_preview_dir is not None:
+            temporary_preview_dir.cleanup()
 
     print("")
     print("Manual loop complete.")
@@ -237,6 +309,51 @@ def run_loop(
 
 def _page_failed(result: ManualStageResult) -> bool:
     return result.status not in {"ok", "ok_no_arrow_detected"}
+
+
+def _preview_path(preview_dir: Path | None, page: Path) -> Path:
+    if preview_dir is None:
+        raise ValueError("Preview directory is required when opening loop previews.")
+    return preview_dir / f"{page.stem}_preview.png"
+
+
+def _terminate_preview_process(proc: subprocess.Popen, sig: signal.Signals) -> None:
+    if os.name == "posix":
+        try:
+            os.killpg(proc.pid, sig)
+            return
+        except ProcessLookupError:
+            pass
+        except OSError:
+            pass
+
+    if proc.poll() is None:
+        if sig == signal.SIGTERM:
+            proc.terminate()
+        else:
+            proc.kill()
+
+
+def _managed_preview_commands(path: Path) -> list[list[str]]:
+    commands: list[list[str]] = []
+    # xdg-open/gio normally hand off to another process and exit, so this loop
+    # uses direct viewers whose process can be terminated before the next page.
+    viewer_specs = (
+        ("eog", ["--new-instance"]),
+        ("xviewer", ["--new-instance"]),
+        ("feh", ["--auto-zoom", "--scale-down"]),
+        ("imv", []),
+        ("nsxiv", []),
+        ("sxiv", []),
+        ("ristretto", []),
+        ("gpicview", []),
+        ("display", []),
+    )
+    for executable, args in viewer_specs:
+        resolved = shutil.which(executable)
+        if resolved is not None:
+            commands.append([resolved, *args, str(path)])
+    return commands
 
 
 def _page_sort_key(path: Path) -> tuple[bool, int, tuple[tuple[int, int | str], ...]]:
